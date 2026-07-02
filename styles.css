@@ -59,8 +59,7 @@ body {
 }
 
 button,
-input,
-label {
+input {
   font: inherit;
 }
 
@@ -115,8 +114,7 @@ h2 {
   justify-content: flex-end;
 }
 
-button,
-.import-button {
+button {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -126,24 +124,18 @@ button,
   cursor: pointer;
 }
 
-button:hover,
-.import-button:hover {
+button:hover {
   border-color: var(--line-strong);
   transform: translateY(-1px);
 }
 
 .secondary,
-.icon-action,
-.import-button {
+.icon-action {
   color: var(--muted);
 }
 
 .icon-action {
   min-width: 70px;
-}
-
-.import-button input {
-  display: none;
 }
 
 .sync-status {

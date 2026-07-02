@@ -75,11 +75,6 @@ const els = {
 
 applyTheme();
 
-document.querySelector("#todayButton").addEventListener("click", () => {
-  activeDate = isoToday();
-  render();
-});
-
 document.querySelector("#prevDay").addEventListener("click", () => {
   activeDate = addDays(activeDate, -1);
   render();
@@ -90,8 +85,6 @@ document.querySelector("#nextDay").addEventListener("click", () => {
   render();
 });
 
-document.querySelector("#exportButton").addEventListener("click", exportData);
-document.querySelector("#importFile").addEventListener("change", importData);
 els.signInButton.addEventListener("click", signIn);
 els.signUpButton.addEventListener("click", signUp);
 els.signOutButton.addEventListener("click", signOut);
@@ -563,38 +556,6 @@ function formatShortDate(iso) {
 
 function formatDayName(iso) {
   return new Intl.DateTimeFormat("en", { weekday: "short" }).format(new Date(`${iso}T12:00:00`));
-}
-
-function exportData() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `habit-tracker-${isoToday()}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function importData(event) {
-  const [file] = event.target.files;
-  if (!file) return;
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    try {
-      const parsed = JSON.parse(reader.result);
-      if (parsed && parsed.days) {
-        state = parsed;
-        saveState();
-        if (currentUser && cloudHydrated) {
-          syncAllLocalDays();
-        }
-        render();
-      }
-    } catch {
-      event.target.value = "";
-    }
-  });
-  reader.readAsText(file);
 }
 
 renderAuth();
