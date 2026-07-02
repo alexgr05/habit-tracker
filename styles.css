@@ -142,6 +142,22 @@ button:hover,
   display: none;
 }
 
+.sync-status {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--muted);
+  background: var(--panel);
+  font-weight: 800;
+}
+
+.sync-status.is-cloud {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--line));
+  background: var(--amber-wash);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.58fr) minmax(330px, 0.92fr);
@@ -150,6 +166,7 @@ button:hover,
 }
 
 .tracker-panel,
+.auth-panel,
 .flame-card,
 .summary-card,
 .protection-panel,
@@ -312,6 +329,34 @@ input:focus {
 .streak-panel {
   display: grid;
   gap: 10px;
+}
+
+.auth-panel {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  box-shadow: none;
+}
+
+.auth-form,
+.signed-in-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.auth-message,
+.signed-in-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .flame-card {

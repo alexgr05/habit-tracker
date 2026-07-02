@@ -1,7 +1,11 @@
 ﻿const storageKey = "habit-streak-tracker-v1";
 const themeKey = "habit-streak-tracker-theme";
+const supabaseUrl = "https://ojgffpfrgqkvaenkotwu.supabase.co";
+const supabaseKey = "sb_publishable_6HKUhHOR5A1F1nkzr62NhQ_QNvhjgMD";
 const startDate = "2026-06-29";
 const historyDays = 14;
+const cloudReady = Boolean(window.supabase && supabaseUrl && supabaseKey);
+const supabaseClient = cloudReady ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
 const categories = [
   { key: "health", label: "Health" },
@@ -28,10 +32,24 @@ const defaultDay = () => ({
 let state = loadState();
 let activeDate = isoToday();
 let theme = loadTheme();
+let currentUser = null;
+let cloudHydrated = false;
+let saveTimer = null;
 
 const els = {
   todayLine: document.querySelector("#todayLine"),
   todayScore: document.querySelector("#todayScore"),
+  syncStatus: document.querySelector("#syncStatus"),
+  authTitle: document.querySelector("#authTitle"),
+  authForm: document.querySelector("#authForm"),
+  authEmail: document.querySelector("#authEmail"),
+  authPassword: document.querySelector("#authPassword"),
+  signInButton: document.querySelector("#signInButton"),
+  signUpButton: document.querySelector("#signUpButton"),
+  signedInPanel: document.querySelector("#signedInPanel"),
+  signedInEmail: document.querySelector("#signedInEmail"),
+  signOutButton: document.querySelector("#signOutButton"),
+  authMessage: document.querySelector("#authMessage"),
   lifeStreak: document.querySelector("#lifeStreak"),
   bestLife: document.querySelector("#bestLife"),
   freezeState: document.querySelector("#freezeState"),
@@ -74,6 +92,9 @@ document.querySelector("#nextDay").addEventListener("click", () => {
 
 document.querySelector("#exportButton").addEventListener("click", exportData);
 document.querySelector("#importFile").addEventListener("change", importData);
+els.signInButton.addEventListener("click", signIn);
+els.signUpButton.addEventListener("click", signUp);
+els.signOutButton.addEventListener("click", signOut);
 els.themeToggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
   localStorage.setItem(themeKey, theme);
@@ -128,6 +149,147 @@ function applyTheme() {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+  queueCloudSave(activeDate);
+}
+
+async function initializeCloud() {
+  if (!cloudReady) {
+    setSyncStatus("Local");
+    setAuthMessage("Cloud library not loaded.");
+    return;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  await handleSession(data.session);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    handleSession(session);
+  });
+}
+
+async function handleSession(session) {
+  currentUser = session?.user || null;
+  cloudHydrated = false;
+  renderAuth();
+
+  if (currentUser) {
+    setSyncStatus("Loading cloud", true);
+    await loadCloudDays();
+    await syncAllLocalDays();
+    cloudHydrated = true;
+    setSyncStatus("Cloud synced", true);
+    render();
+  } else {
+    setSyncStatus("Local");
+    render();
+  }
+}
+
+async function signUp() {
+  const credentials = getCredentials();
+  if (!credentials) return;
+  setAuthMessage("Creating account...");
+  const { error } = await supabaseClient.auth.signUp(credentials);
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  setAuthMessage("Account created. You can sign in now.");
+}
+
+async function signIn() {
+  const credentials = getCredentials();
+  if (!credentials) return;
+  setAuthMessage("Signing in...");
+  const { error } = await supabaseClient.auth.signInWithPassword(credentials);
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  setAuthMessage("");
+}
+
+async function signOut() {
+  if (!cloudReady) return;
+  await supabaseClient.auth.signOut();
+  setAuthMessage("Signed out. Local mode active.");
+}
+
+function getCredentials() {
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+  if (!email || !password) {
+    setAuthMessage("Enter email and password.");
+    return null;
+  }
+  return { email, password };
+}
+
+function renderAuth() {
+  const signedIn = Boolean(currentUser);
+  els.authTitle.textContent = signedIn ? "Cloud sync" : "Sign in";
+  els.authForm.hidden = signedIn;
+  els.signedInPanel.hidden = !signedIn;
+  els.signedInEmail.textContent = signedIn ? currentUser.email : "";
+}
+
+function setAuthMessage(message) {
+  els.authMessage.textContent = message;
+}
+
+function setSyncStatus(message, cloud = false) {
+  els.syncStatus.textContent = message;
+  els.syncStatus.classList.toggle("is-cloud", cloud);
+}
+
+async function loadCloudDays() {
+  const { data, error } = await supabaseClient
+    .from("habit_days")
+    .select("date,data")
+    .order("date", { ascending: true });
+
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+
+  for (const row of data || []) {
+    state.days[row.date] = { ...defaultDay(), ...row.data };
+  }
+  localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+async function syncAllLocalDays() {
+  const dates = Object.keys(state.days);
+  for (const date of dates) {
+    await saveCloudDay(date);
+  }
+}
+
+function queueCloudSave(date) {
+  if (!currentUser || !cloudHydrated) return;
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    saveCloudDay(date);
+  }, 350);
+}
+
+async function saveCloudDay(date) {
+  if (!currentUser || !state.days[date]) return;
+  setSyncStatus("Saving", true);
+  const { error } = await supabaseClient.from("habit_days").upsert({
+    user_id: currentUser.id,
+    date,
+    data: state.days[date],
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id,date" });
+
+  if (error) {
+    setSyncStatus("Cloud error", true);
+    setAuthMessage(error.message);
+    return;
+  }
+  setSyncStatus("Cloud synced", true);
 }
 
 function ensureDay(date) {
@@ -423,6 +585,9 @@ function importData(event) {
       if (parsed && parsed.days) {
         state = parsed;
         saveState();
+        if (currentUser && cloudHydrated) {
+          syncAllLocalDays();
+        }
         render();
       }
     } catch {
@@ -432,4 +597,6 @@ function importData(event) {
   reader.readAsText(file);
 }
 
+renderAuth();
 render();
+initializeCloud();

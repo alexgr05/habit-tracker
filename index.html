@@ -14,6 +14,7 @@
           <p id="todayLine" class="subtle"></p>
         </div>
         <div class="actions">
+          <span id="syncStatus" class="sync-status">Local</span>
           <button id="themeToggle" class="icon-action" type="button" aria-label="Switch theme" title="Switch theme">Dark</button>
           <button id="todayButton" class="secondary" type="button">Today</button>
           <button id="exportButton" class="secondary" type="button">Export</button>
@@ -68,6 +69,26 @@
         </section>
 
         <aside class="streak-panel" aria-label="Streak summary">
+          <section class="auth-panel" aria-label="Cloud sync">
+            <div>
+              <p class="eyebrow">Cloud</p>
+              <h2 id="authTitle">Sign in</h2>
+            </div>
+            <div id="authForm" class="auth-form">
+              <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
+              <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password">
+              <div class="auth-actions">
+                <button id="signInButton" type="button">Sign in</button>
+                <button id="signUpButton" class="secondary" type="button">Create account</button>
+              </div>
+            </div>
+            <div id="signedInPanel" class="signed-in-panel" hidden>
+              <p id="signedInEmail"></p>
+              <button id="signOutButton" class="secondary" type="button">Sign out</button>
+            </div>
+            <p id="authMessage" class="auth-message"></p>
+          </section>
+
           <section class="flame-card" aria-label="Daily score">
             <div class="flame-topline">
               <div>
@@ -146,6 +167,7 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>
