@@ -40,6 +40,7 @@ const els = {
   todayLine: document.querySelector("#todayLine"),
   todayScore: document.querySelector("#todayScore"),
   syncStatus: document.querySelector("#syncStatus"),
+  authPanel: document.querySelector("#authPanel"),
   authTitle: document.querySelector("#authTitle"),
   authForm: document.querySelector("#authForm"),
   authEmail: document.querySelector("#authEmail"),
@@ -220,7 +221,8 @@ function getCredentials() {
 
 function renderAuth() {
   const signedIn = Boolean(currentUser);
-  els.authTitle.textContent = signedIn ? "Cloud sync" : "Sign in";
+  els.authPanel.classList.toggle("is-compact", signedIn);
+  els.authTitle.textContent = signedIn ? "Cloud synced" : "Sign in";
   els.authForm.hidden = signedIn;
   els.signedInPanel.hidden = !signedIn;
   els.signedInEmail.textContent = signedIn ? currentUser.email : "";

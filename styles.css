@@ -335,10 +335,53 @@ input:focus {
   box-shadow: none;
 }
 
+.auth-panel.is-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 11px 12px;
+}
+
+.auth-panel.is-compact .auth-head {
+  min-width: 0;
+}
+
+.auth-panel.is-compact .eyebrow {
+  display: none;
+}
+
+.auth-panel.is-compact h2 {
+  color: var(--amber);
+  font-size: 16px;
+}
+
 .auth-form,
 .signed-in-panel {
   display: grid;
   gap: 8px;
+}
+
+.auth-panel.is-compact .signed-in-panel {
+  display: contents;
+}
+
+.auth-panel.is-compact .signed-in-panel p {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-panel.is-compact .signed-in-panel button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.auth-panel.is-compact .auth-message {
+  grid-column: 1 / -1;
 }
 
 .auth-actions {
@@ -651,6 +694,11 @@ tr:last-child td {
 
   .auth-actions {
     grid-template-columns: 1fr;
+  }
+
+  .auth-panel.is-compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 11px;
   }
 
   .flame-topline strong {
