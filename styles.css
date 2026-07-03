@@ -61,6 +61,7 @@ body {
 button,
 input {
   font: inherit;
+  font-size: 16px;
 }
 
 .app-shell {
@@ -515,20 +516,15 @@ tr:last-child td {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
-
-  .streak-panel {
-    grid-row: 1;
-  }
 }
 
 @media (max-width: 760px) {
-  .topbar,
   .panel-head {
     flex-direction: column;
   }
 
   .actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .date-strip {
@@ -548,25 +544,145 @@ tr:last-child td {
 
 @media (max-width: 540px) {
   .app-shell {
-    width: min(100% - 16px, 1240px);
-    padding-top: 12px;
+    width: 100%;
+    padding: 12px 10px 22px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
   }
 
   h1 {
-    font-size: 25px;
+    font-size: 23px;
   }
 
   h2 {
     font-size: 20px;
   }
 
+  .subtle {
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .actions {
+    gap: 6px;
+  }
+
+  .sync-status,
+  .icon-action {
+    min-height: 36px;
+    padding: 7px 9px;
+    font-size: 13px;
+  }
+
+  .icon-action {
+    min-width: 54px;
+  }
+
+  .tracker-panel,
+  .auth-panel,
+  .flame-card,
+  .protection-panel {
+    padding: 12px;
+  }
+
+  .panel-head {
+    gap: 11px;
+    margin-bottom: 12px;
+  }
+
+  .date-strip {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    gap: 7px;
+  }
+
+  .icon-button {
+    min-height: 38px;
+    font-size: 24px;
+  }
+
   .entry-grid,
-  .input-grid,
+  .input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .streak-stack {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .habit-toggle {
-    min-height: 68px;
+    min-height: 72px;
+    padding: 11px 34px 11px 12px;
+    font-size: 15px;
+    line-height: 1.15;
+  }
+
+  .habit-toggle::after {
+    right: 11px;
+    width: 15px;
+    height: 15px;
+  }
+
+  .input-card {
+    min-height: 88px;
+    padding: 8px;
+  }
+
+  .input-card span {
+    align-items: flex-start;
+    font-size: 12px;
+    line-height: 1.2;
+    margin-left: 0;
+  }
+
+  input {
+    min-height: 38px;
+    padding: 7px 9px;
+  }
+
+  .streak-panel {
+    gap: 8px;
+  }
+
+  .auth-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .flame-topline strong {
+    font-size: 44px;
+  }
+
+  .summary-card {
+    padding: 11px 10px;
+  }
+
+  .summary-card span {
+    min-height: 28px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .summary-card strong {
+    font-size: 25px;
+  }
+
+  .protection-panel {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .freeze-action {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .detail-panel summary {
+    min-height: 46px;
+    padding: 13px 12px;
   }
 }

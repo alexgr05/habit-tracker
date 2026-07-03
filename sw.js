@@ -1,11 +1,13 @@
-const cacheName = "habit-streak-pwa-v1";
+const cacheName = "habit-streak-pwa-v2";
 const appShell = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
   "/manifest.webmanifest",
-  "/icon.svg"
+  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png"
 ];
 
 self.addEventListener("install", event => {

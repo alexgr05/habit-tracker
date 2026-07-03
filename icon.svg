@@ -1,7 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Habit Streak icon">
-  <rect width="512" height="512" rx="108" fill="#101318"/>
-  <rect x="40" y="40" width="432" height="432" rx="86" fill="#1d222b" stroke="#f59e0b" stroke-width="10"/>
-  <path fill="#f59e0b" d="M270 94c18 48-5 77-27 103-19 23-37 44-22 82 11-28 34-48 60-64 66 60 93 113 82 164-11 51-55 85-108 85-59 0-109-39-118-97-8-54 21-93 55-137 31-40 68-88 78-136Z"/>
-  <path fill="#ffcf33" d="M258 287c33 31 49 58 43 85-5 25-24 42-49 42-28 0-51-19-54-46-3-25 12-44 30-65 10-12 20-24 30-16Z"/>
-  <path fill="#f4f6f8" d="M163 170h52v52h-52zM163 242h52v52h-52zM163 314h52v52h-52z"/>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="32" x2="416" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#222936"/>
+      <stop offset="1" stop-color="#101318"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="202" y1="84" x2="332" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fde047"/>
+      <stop offset="0.42" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="54" y="54" width="404" height="404" rx="88" fill="none" stroke="#f59e0b" stroke-opacity="0.38" stroke-width="8"/>
+  <path fill="url(#flame)" d="M279 70c21 66-15 100-48 139-29 34-55 74-24 136 6-47 35-86 80-116 80 68 107 126 88 178-17 48-64 78-120 78-73 0-133-48-142-119-7-61 32-111 75-164 38-47 78-96 91-132Z"/>
+  <path fill="#fff7cc" d="M266 300c35 34 47 67 35 95-9 22-31 36-56 36-36 0-63-25-65-60-2-31 19-53 41-77 14-15 28-29 45 6Z" opacity="0.95"/>
+  <path fill="#101318" d="m223 273 34 34 76-82 32 30-108 117-67-67 33-32Z"/>
 </svg>
