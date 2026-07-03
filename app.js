@@ -426,7 +426,8 @@ function yesNo(value) {
 
 function scoreStatus(score, lifeOk, freezeUsed) {
   if (lifeOk && freezeUsed) return "Streak protected";
-  if (lifeOk) return "Perfect day burning";
+  if (score === 100) return "Perfect day burning";
+  if (lifeOk) return "Streak burning";
   if (score >= 70) return "Strong partial";
   if (score >= 40) return "Still in motion";
   return "Open day";
@@ -454,7 +455,6 @@ function computeDay(date) {
     sleep: raw.sleep || day.freezeUsed,
     avoidance: raw.avoidance || day.freezeUsed,
   };
-  const lifeOk = ok.health && ok.mental && ok.study && ok.sleep && ok.avoidance;
   const completed = [
     day.supplements,
     day.floss,
@@ -467,6 +467,8 @@ function computeDay(date) {
     day.noSocialMedia,
     day.noPorn,
   ].filter(Boolean).length;
+  const dailyScore = Math.round((completed / 10) * 100);
+  const lifeOk = dailyScore >= 70 || day.freezeUsed;
 
   return {
     studyOk,
@@ -476,7 +478,7 @@ function computeDay(date) {
     raw,
     ok,
     lifeOk,
-    dailyScore: Math.round((completed / 10) * 100),
+    dailyScore,
     sleepHours,
     sleepHoursText: Number.isFinite(sleepHours) ? sleepHours.toFixed(1) : "",
   };
@@ -524,7 +526,7 @@ function computeStats() {
   stats.life.best = bests.life;
   stats.life.tokens = "";
   stats.life.used = "";
-  stats.life.today = computeDay(activeDate).lifeOk ? "Perfect" : "Partial";
+  stats.life.today = computeDay(activeDate).lifeOk ? "Active" : "Partial";
 
   return stats;
 }
