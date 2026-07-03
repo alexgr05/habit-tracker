@@ -35,6 +35,8 @@ let theme = loadTheme();
 let currentUser = null;
 let cloudHydrated = false;
 let saveTimer = null;
+let syncInProgress = false;
+const pendingSaveDates = new Set();
 
 const els = {
   todayLine: document.querySelector("#todayLine"),
@@ -75,6 +77,7 @@ const els = {
 };
 
 applyTheme();
+setupNetworkStatus();
 
 document.querySelector("#prevDay").addEventListener("click", () => {
   activeDate = addDays(activeDate, -1);
@@ -167,11 +170,15 @@ async function handleSession(session) {
   renderAuth();
 
   if (currentUser) {
-    setSyncStatus("Loading cloud", true);
+    setSyncStatus("Loading cloud", true, "saving");
     await loadCloudDays();
     await syncAllLocalDays();
     cloudHydrated = true;
-    setSyncStatus("Cloud synced", true);
+    if (!navigator.onLine) {
+      setSyncStatus("Offline", true, "offline");
+    } else if (pendingSaveDates.size === 0) {
+      setSyncStatus("Cloud synced", true);
+    }
     render();
   } else {
     setSyncStatus("Local");
@@ -232,9 +239,15 @@ function setAuthMessage(message) {
   els.authMessage.textContent = message;
 }
 
-function setSyncStatus(message, cloud = false) {
+function setSyncStatus(message, cloud = false, state = "") {
   els.syncStatus.textContent = message;
   els.syncStatus.classList.toggle("is-cloud", cloud);
+  els.syncStatus.classList.toggle("is-saving", state === "saving");
+  els.syncStatus.classList.toggle("is-error", state === "error");
+  els.syncStatus.classList.toggle("is-offline", state === "offline");
+  if (currentUser) {
+    els.authTitle.textContent = message;
+  }
 }
 
 async function loadCloudDays() {
@@ -244,6 +257,7 @@ async function loadCloudDays() {
     .order("date", { ascending: true });
 
   if (error) {
+    setSyncStatus("Cloud error", true, "error");
     setAuthMessage(error.message);
     return;
   }
@@ -257,21 +271,58 @@ async function loadCloudDays() {
 async function syncAllLocalDays() {
   const dates = Object.keys(state.days);
   for (const date of dates) {
-    await saveCloudDay(date);
+    pendingSaveDates.add(date);
   }
+  await savePendingDays();
 }
 
 function queueCloudSave(date) {
   if (!currentUser || !cloudHydrated) return;
+  pendingSaveDates.add(date);
   window.clearTimeout(saveTimer);
+  if (!navigator.onLine) {
+    setSyncStatus("Offline", true, "offline");
+    return;
+  }
   saveTimer = window.setTimeout(() => {
-    saveCloudDay(date);
+    savePendingDays();
   }, 350);
 }
 
+async function savePendingDays() {
+  if (!currentUser || syncInProgress || pendingSaveDates.size === 0) return;
+  if (!navigator.onLine) {
+    setSyncStatus("Offline", true, "offline");
+    return;
+  }
+
+  syncInProgress = true;
+  setSyncStatus("Saving...", true, "saving");
+  let hadError = false;
+  while (pendingSaveDates.size > 0 && navigator.onLine) {
+    const [date] = pendingSaveDates;
+    const saved = await saveCloudDay(date);
+    if (saved) {
+      pendingSaveDates.delete(date);
+    } else {
+      hadError = true;
+      break;
+    }
+  }
+  syncInProgress = false;
+
+  if (!navigator.onLine) {
+    setSyncStatus("Offline", true, "offline");
+  } else if (!hadError && pendingSaveDates.size === 0) {
+    setSyncStatus("Cloud synced", true);
+    setAuthMessage("");
+  } else {
+    setSyncStatus("Cloud error", true, "error");
+  }
+}
+
 async function saveCloudDay(date) {
-  if (!currentUser || !state.days[date]) return;
-  setSyncStatus("Saving", true);
+  if (!currentUser || !state.days[date]) return true;
   const { error } = await supabaseClient.from("habit_days").upsert({
     user_id: currentUser.id,
     date,
@@ -280,11 +331,28 @@ async function saveCloudDay(date) {
   }, { onConflict: "user_id,date" });
 
   if (error) {
-    setSyncStatus("Cloud error", true);
+    setSyncStatus("Cloud error", true, "error");
     setAuthMessage(error.message);
-    return;
+    return false;
   }
-  setSyncStatus("Cloud synced", true);
+  return true;
+}
+
+function setupNetworkStatus() {
+  window.addEventListener("offline", () => {
+    if (currentUser) {
+      setSyncStatus("Offline", true, "offline");
+    }
+  });
+
+  window.addEventListener("online", () => {
+    if (!currentUser) return;
+    if (pendingSaveDates.size > 0) {
+      savePendingDays();
+    } else {
+      setSyncStatus("Cloud synced", true);
+    }
+  });
 }
 
 function ensureDay(date) {
