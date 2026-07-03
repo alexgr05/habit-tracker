@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Habit Streak icon">
+  <rect width="512" height="512" rx="108" fill="#101318"/>
+  <rect x="40" y="40" width="432" height="432" rx="86" fill="#1d222b" stroke="#f59e0b" stroke-width="10"/>
+  <path fill="#f59e0b" d="M270 94c18 48-5 77-27 103-19 23-37 44-22 82 11-28 34-48 60-64 66 60 93 113 82 164-11 51-55 85-108 85-59 0-109-39-118-97-8-54 21-93 55-137 31-40 68-88 78-136Z"/>
+  <path fill="#ffcf33" d="M258 287c33 31 49 58 43 85-5 25-24 42-49 42-28 0-51-19-54-46-3-25 12-44 30-65 10-12 20-24 30-16Z"/>
+  <path fill="#f4f6f8" d="M163 170h52v52h-52zM163 242h52v52h-52zM163 314h52v52h-52z"/>
+</svg>

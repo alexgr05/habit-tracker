@@ -561,3 +561,14 @@ function formatDayName(iso) {
 renderAuth();
 render();
 initializeCloud();
+registerServiceWorker();
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {
+      // The tracker still works as a normal website if install support is unavailable.
+    });
+  });
+}

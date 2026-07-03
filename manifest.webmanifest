@@ -1,0 +1,19 @@
+{
+  "name": "Habit Streak Tracker",
+  "short_name": "Habit Streak",
+  "description": "A fast streak-based habit tracker with cloud sync.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101318",
+  "theme_color": "#101318",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
