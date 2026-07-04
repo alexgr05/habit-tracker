@@ -25,7 +25,6 @@ const defaultDay = () => ({
   bedtime: "",
   wakeTime: "",
   noSocialMedia: false,
-  noPorn: false,
   freezeUsed: false,
 });
 
@@ -446,7 +445,7 @@ function computeDay(date) {
     mental: day.mentalRoutine,
     study: studyOk,
     sleep: asleepOk && wakeOk && sleepOk,
-    avoidance: day.noSocialMedia && day.noPorn && asleepOk,
+    avoidance: day.noSocialMedia && asleepOk,
   };
   const ok = {
     health: raw.health || day.freezeUsed,
@@ -465,9 +464,8 @@ function computeDay(date) {
     wakeOk,
     sleepOk,
     day.noSocialMedia,
-    day.noPorn,
   ].filter(Boolean).length;
-  const dailyScore = Math.round((completed / 10) * 100);
+  const dailyScore = Math.round((completed / 9) * 100);
   const lifeOk = dailyScore >= 70 || day.freezeUsed;
 
   return {
