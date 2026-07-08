@@ -25,6 +25,7 @@ const defaultDay = () => ({
   bedtime: "",
   wakeTime: "",
   noSocialMedia: false,
+  noPorn: false,
   freezeUsed: false,
 });
 
@@ -440,12 +441,13 @@ function computeDay(date) {
   const wakeOk = isWakeBefore0830(day.wakeTime);
   const sleepOk = sleepHours >= 8;
   const studyOk = Number.isFinite(studyHours) && studyHours >= 7;
+  const studyScore = Number.isFinite(studyHours) ? Math.max(0, Math.min(studyHours / 7, 1)) : 0;
   const raw = {
     health: day.supplements && day.floss && day.legExercise,
     mental: day.mentalRoutine,
     study: studyOk,
     sleep: asleepOk && wakeOk && sleepOk,
-    avoidance: day.noSocialMedia && asleepOk,
+    avoidance: day.noSocialMedia && day.noPorn && asleepOk,
   };
   const ok = {
     health: raw.health || day.freezeUsed,
@@ -459,17 +461,19 @@ function computeDay(date) {
     day.floss,
     day.legExercise,
     day.mentalRoutine,
-    studyOk,
+    studyScore,
     asleepOk,
     wakeOk,
     sleepOk,
     day.noSocialMedia,
-  ].filter(Boolean).length;
-  const dailyScore = Math.round((completed / 9) * 100);
-  const lifeOk = dailyScore >= 70 || day.freezeUsed;
+    day.noPorn,
+  ].reduce((sum, value) => sum + Number(value), 0);
+  const dailyScore = Math.round((completed / 10) * 100);
+  const lifeOk = dailyScore >= 80 || day.freezeUsed;
 
   return {
     studyOk,
+    studyScore,
     asleepOk,
     wakeOk,
     sleepOk,
