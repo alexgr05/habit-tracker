@@ -1,4 +1,4 @@
-const cacheName = "habit-streak-pwa-v2";
+const cacheName = "habit-streak-pwa-v3";
 const appShell = [
   "/",
   "/index.html",
@@ -32,6 +32,14 @@ self.addEventListener("fetch", event => {
   if (requestUrl.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(response => {
+        const responseCopy = response.clone();
+        caches.open(cacheName).then(cache => {
+          cache.put(event.request, responseCopy);
+        });
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

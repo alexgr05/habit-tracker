@@ -641,8 +641,10 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {
-      // The tracker still works as a normal website if install support is unavailable.
-    });
+    navigator.serviceWorker.register("sw.js")
+      .then(registration => registration.update())
+      .catch(() => {
+        // The tracker still works as a normal website if install support is unavailable.
+      });
   });
 }
