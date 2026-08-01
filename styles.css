@@ -228,6 +228,38 @@ button:hover {
   align-items: center;
 }
 
+.panel-controls {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(86px, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.mode-toggle button {
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mode-toggle button.is-active {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--line));
+  background: var(--amber-wash);
+}
+
 .icon-button {
   padding: 0;
   font-size: 26px;
@@ -756,6 +788,11 @@ tr:last-child td {
   .date-strip {
     width: 100%;
     grid-template-columns: 42px minmax(0, 1fr) 42px;
+  }
+
+  .panel-controls {
+    width: 100%;
+    justify-items: stretch;
   }
 
   .input-grid,

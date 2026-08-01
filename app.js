@@ -19,10 +19,12 @@ const categories = [
 ];
 
 const defaultDay = () => ({
+  mode: "semester",
   supplements: false,
   floss: false,
   legExercise: false,
   mentalRoutine: false,
+  sports: false,
   studyHours: "",
   bedtime: "",
   wakeTime: "",
@@ -69,6 +71,8 @@ const els = {
   themeToggle: document.querySelector("#themeToggle"),
   summaryRows: document.querySelector("#summaryRows"),
   historyRows: document.querySelector("#historyRows"),
+  semesterMode: document.querySelector("#semesterMode"),
+  breakMode: document.querySelector("#breakMode"),
   insightTrackedDays: document.querySelector("#insightTrackedDays"),
   insightAverageScore: document.querySelector("#insightAverageScore"),
   insightStreakDays: document.querySelector("#insightStreakDays"),
@@ -77,6 +81,7 @@ const els = {
   habitConsistency: document.querySelector("#habitConsistency"),
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
+  sportsTile: document.querySelector("#sportsTile"),
   studyHours: document.querySelector("#studyHours"),
   bedtime: document.querySelector("#bedtime"),
   wakeTime: document.querySelector("#wakeTime"),
@@ -111,6 +116,8 @@ els.resetPasswordButton.addEventListener("click", sendPasswordReset);
 els.updatePasswordButton.addEventListener("click", updatePassword);
 els.changePasswordButton.addEventListener("click", showPasswordResetForm);
 els.signOutButton.addEventListener("click", signOut);
+els.semesterMode.addEventListener("click", () => setMode("semester"));
+els.breakMode.addEventListener("click", () => setMode("break"));
 els.themeToggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
   localStorage.setItem(themeKey, theme);
@@ -166,6 +173,13 @@ function applyTheme() {
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
   queueCloudSave(activeDate);
+}
+
+function setMode(mode) {
+  const day = ensureDay(activeDate);
+  day.mode = mode;
+  saveState();
+  render();
 }
 
 async function initializeCloud() {
@@ -452,6 +466,7 @@ function render() {
   const day = ensureDay(activeDate);
   const computed = computeDay(activeDate);
   const stats = computeStats();
+  const breakMode = computed.mode === "break";
 
   els.activeDate.value = activeDate;
   els.todayLine.textContent = `${formatDayName(activeDate)} - ${formatShortDate(activeDate)}`;
@@ -459,6 +474,10 @@ function render() {
   els.bedtime.value = day.bedtime;
   els.wakeTime.value = day.wakeTime;
   els.sleepHours.value = computed.sleepHoursText;
+  els.studyCard.hidden = breakMode;
+  els.sportsTile.hidden = !breakMode;
+  els.semesterMode.classList.toggle("is-active", !breakMode);
+  els.breakMode.classList.toggle("is-active", breakMode);
 
   document.querySelectorAll(".field-toggle").forEach(button => {
     const value = Boolean(day[button.dataset.field]);
@@ -469,7 +488,9 @@ function render() {
     }
   });
 
-  updateInputStatus(els.studyCard, els.studyTarget, computed.studyOk, day.studyHours !== "");
+  if (!breakMode) {
+    updateInputStatus(els.studyCard, els.studyTarget, computed.studyOk, day.studyHours !== "");
+  }
   updateInputStatus(els.bedtimeCard, els.asleepTarget, computed.asleepOk, day.bedtime !== "");
   updateInputStatus(els.wakeCard, els.wakeTarget, computed.wakeOk, day.wakeTime !== "");
   updateInputStatus(els.sleepCard, els.sleepTarget, computed.sleepOk, computed.sleepHoursText !== "");
@@ -523,6 +544,7 @@ function scoreStatus(score, lifeOk, freezeUsed) {
 
 function computeDay(date) {
   const day = ensureDay(date);
+  const mode = day.mode || "semester";
   const studyHours = Number.parseFloat(day.studyHours);
   const sleepHours = calculateSleepHours(day.bedtime, day.wakeTime);
   const asleepOk = isAsleepBeforeMidnight(day.bedtime);
@@ -530,10 +552,12 @@ function computeDay(date) {
   const sleepOk = sleepHours >= 8;
   const studyOk = Number.isFinite(studyHours) && studyHours >= 7;
   const studyScore = Number.isFinite(studyHours) ? Math.max(0, Math.min(studyHours / 7, 1)) : 0;
+  const studyOrSportsOk = mode === "break" ? day.sports : studyOk;
+  const studyOrSportsScore = mode === "break" ? Number(day.sports) : studyScore;
   const raw = {
     health: day.supplements && day.floss && day.legExercise,
     mental: day.mentalRoutine,
-    study: studyOk,
+    study: studyOrSportsOk,
     sleep: asleepOk && wakeOk && sleepOk,
     avoidance: day.noSocialMedia && day.noPorn && asleepOk,
   };
@@ -549,7 +573,7 @@ function computeDay(date) {
     day.floss,
     day.legExercise,
     day.mentalRoutine,
-    studyScore,
+    studyOrSportsScore,
     asleepOk,
     wakeOk,
     sleepOk,
@@ -560,8 +584,10 @@ function computeDay(date) {
   const lifeOk = dailyScore >= 80 || day.freezeUsed;
 
   return {
+    mode,
     studyOk,
     studyScore,
+    studyOrSportsOk,
     asleepOk,
     wakeOk,
     sleepOk,
@@ -671,7 +697,7 @@ function renderHabitConsistency(rows) {
     { label: "Floss", value: row => row.day.floss },
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental", value: row => row.day.mentalRoutine },
-    { label: "Study 7h", value: row => row.computed.studyOk },
+    { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
     { label: "Sleep 8h", value: row => row.computed.sleepOk },
     { label: "Before 00", value: row => row.computed.asleepOk },
     { label: "Wake 8:30", value: row => row.computed.wakeOk },
@@ -726,7 +752,7 @@ function insightHabitRates(rows) {
     { label: "Floss", value: row => row.day.floss },
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental Routine", value: row => row.day.mentalRoutine },
-    { label: "7h Study", value: row => row.computed.studyOk },
+    { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
     { label: "8h Sleep", value: row => row.computed.sleepOk },
     { label: "No Social Media", value: row => row.day.noSocialMedia },
     { label: "No Porn", value: row => row.day.noPorn },
@@ -747,12 +773,14 @@ function hasTrackedData(day) {
     day.floss ||
     day.legExercise ||
     day.mentalRoutine ||
+    day.sports ||
     (day.studyHours !== "") ||
     day.bedtime ||
     day.wakeTime ||
     day.noSocialMedia ||
     day.noPorn ||
-    day.freezeUsed
+    day.freezeUsed ||
+    (day.mode && day.mode !== "semester")
   );
 }
 

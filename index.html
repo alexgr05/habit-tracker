@@ -33,10 +33,16 @@
               <p class="eyebrow">Today</p>
               <h2>Checklist</h2>
             </div>
-            <div class="date-strip">
-              <button id="prevDay" class="icon-button" type="button" aria-label="Previous day">&lsaquo;</button>
-              <input id="activeDate" type="date">
-              <button id="nextDay" class="icon-button" type="button" aria-label="Next day">&rsaquo;</button>
+            <div class="panel-controls">
+              <div class="mode-toggle" aria-label="Tracker mode">
+                <button id="semesterMode" type="button">Semester</button>
+                <button id="breakMode" type="button">Break</button>
+              </div>
+              <div class="date-strip">
+                <button id="prevDay" class="icon-button" type="button" aria-label="Previous day">&lsaquo;</button>
+                <input id="activeDate" type="date">
+                <button id="nextDay" class="icon-button" type="button" aria-label="Next day">&rsaquo;</button>
+              </div>
             </div>
           </div>
 
@@ -45,6 +51,7 @@
             <button class="field-toggle habit-toggle" data-field="floss" type="button">Floss</button>
             <button class="field-toggle habit-toggle" data-field="legExercise" type="button">Leg Exercise</button>
             <button class="field-toggle habit-toggle" data-field="mentalRoutine" type="button">Mental Routine</button>
+            <button id="sportsTile" class="field-toggle habit-toggle" data-field="sports" type="button" hidden>Sports</button>
             <button class="field-toggle habit-toggle danger-habit" data-field="noSocialMedia" type="button">No Social Media</button>
             <button class="field-toggle habit-toggle danger-habit streak-habit" data-field="noPorn" type="button">
               <span>No Porn</span>
