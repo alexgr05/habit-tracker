@@ -297,6 +297,18 @@ input:focus {
   box-shadow: 0 0 22px rgba(245, 158, 11, 0.55);
 }
 
+.streak-habit {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.streak-habit strong {
+  color: var(--amber);
+  font-size: 13px;
+  line-height: 1;
+}
+
 .danger-habit:not(.is-on) {
   color: var(--red);
   border-color: rgba(239, 68, 68, 0.42);

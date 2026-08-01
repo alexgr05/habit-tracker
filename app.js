@@ -3,6 +3,8 @@ const themeKey = "habit-streak-tracker-theme";
 const supabaseUrl = "https://ojgffpfrgqkvaenkotwu.supabase.co";
 const supabaseKey = "sb_publishable_6HKUhHOR5A1F1nkzr62NhQ_QNvhjgMD";
 const startDate = "2026-06-29";
+const noPornStreakAnchorDate = "2026-08-01";
+const noPornStreakAnchorDays = 39;
 const historyDays = 14;
 const cloudReady = Boolean(window.supabase && supabaseUrl && supabaseKey);
 const supabaseClient = cloudReady ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
@@ -83,6 +85,7 @@ const els = {
   asleepTarget: document.querySelector("#asleepTarget"),
   wakeTarget: document.querySelector("#wakeTarget"),
   sleepTarget: document.querySelector("#sleepTarget"),
+  noPornTileStreak: document.querySelector("#noPornTileStreak"),
   studyCard: document.querySelector("#studyCard"),
   bedtimeCard: document.querySelector("#bedtimeCard"),
   wakeCard: document.querySelector("#wakeCard"),
@@ -477,6 +480,7 @@ function render() {
   els.lifeStreak.textContent = stats.life.current;
   els.bestLife.textContent = stats.life.best;
   els.freezeState.textContent = yesNo(day.freezeUsed);
+  els.noPornTileStreak.textContent = `${noPornStreakAt(activeDate)}d`;
 
   els.summaryRows.innerHTML = categories.map(category => {
     const item = stats[category.key];
@@ -782,6 +786,24 @@ function streakAt(date) {
   }
 }
 
+function noPornStreakAt(date) {
+  if (date <= noPornStreakAnchorDate) {
+    return Math.max(0, noPornStreakAnchorDays - daysBetween(date, noPornStreakAnchorDate));
+  }
+
+  let streak = noPornStreakAnchorDays;
+  let cursor = addDays(noPornStreakAnchorDate, 1);
+  while (cursor <= date) {
+    const day = state.days[cursor];
+    if (!day?.noPorn) {
+      return cursor === date ? streak : 0;
+    }
+    streak += 1;
+    cursor = addDays(cursor, 1);
+  }
+  return streak;
+}
+
 function sortedDates() {
   const known = new Set(Object.keys(state.days));
   let cursor = startDate;
@@ -836,6 +858,12 @@ function addDays(iso, days) {
   const date = new Date(`${iso}T12:00:00`);
   date.setDate(date.getDate() + days);
   return toIsoDate(date);
+}
+
+function daysBetween(start, end) {
+  const startDateValue = new Date(`${start}T12:00:00`);
+  const endDateValue = new Date(`${end}T12:00:00`);
+  return Math.round((endDateValue - startDateValue) / 86400000);
 }
 
 function maxDate(a, b) {
