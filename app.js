@@ -56,6 +56,7 @@ const els = {
   updatePasswordButton: document.querySelector("#updatePasswordButton"),
   signedInPanel: document.querySelector("#signedInPanel"),
   signedInEmail: document.querySelector("#signedInEmail"),
+  changePasswordButton: document.querySelector("#changePasswordButton"),
   signOutButton: document.querySelector("#signOutButton"),
   authMessage: document.querySelector("#authMessage"),
   lifeStreak: document.querySelector("#lifeStreak"),
@@ -105,6 +106,7 @@ els.signInButton.addEventListener("click", signIn);
 els.signUpButton.addEventListener("click", signUp);
 els.resetPasswordButton.addEventListener("click", sendPasswordReset);
 els.updatePasswordButton.addEventListener("click", updatePassword);
+els.changePasswordButton.addEventListener("click", showPasswordResetForm);
 els.signOutButton.addEventListener("click", signOut);
 els.themeToggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
@@ -170,8 +172,13 @@ async function initializeCloud() {
     return;
   }
 
+  passwordRecoveryMode = isRecoveryRedirect();
   const { data } = await supabaseClient.auth.getSession();
   await handleSession(data.session);
+  if (passwordRecoveryMode && data.session?.user) {
+    renderAuth();
+    setAuthMessage("Enter a new password.");
+  }
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
@@ -268,6 +275,20 @@ async function updatePassword() {
   els.newPassword.value = "";
   renderAuth();
   setAuthMessage("Password updated. You are signed in.");
+}
+
+function showPasswordResetForm() {
+  if (!currentUser) return;
+  passwordRecoveryMode = true;
+  renderAuth();
+  setAuthMessage("Enter a new password.");
+  els.newPassword.focus();
+}
+
+function isRecoveryRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return params.get("type") === "recovery" || hashParams.get("type") === "recovery";
 }
 
 async function signOut() {

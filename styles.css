@@ -408,11 +408,14 @@ input:focus {
 
 .auth-panel.is-compact .signed-in-panel button {
   grid-column: 2;
-  grid-row: 1 / span 2;
   align-self: center;
   min-height: 34px;
   padding: 6px 10px;
   font-size: 13px;
+}
+
+.auth-panel.is-compact .signed-in-panel button + button {
+  margin-top: 6px;
 }
 
 .auth-panel.is-compact .auth-message {
