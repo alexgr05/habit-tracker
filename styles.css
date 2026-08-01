@@ -595,6 +595,7 @@ input:focus {
 
 .insights-panel {
   margin-top: 14px;
+  max-width: 100%;
 }
 
 .insights-body {
@@ -602,6 +603,7 @@ input:focus {
   gap: 12px;
   padding: 14px;
   border-top: 1px solid var(--line);
+  min-width: 0;
 }
 
 .insight-stat-grid {
@@ -619,6 +621,7 @@ input:focus {
 .chart-panel {
   padding: 13px;
   box-shadow: none;
+  min-width: 0;
 }
 
 .chart-head {
@@ -680,9 +683,10 @@ h3 {
 
 .habit-row {
   display: grid;
-  grid-template-columns: minmax(82px, 0.9fr) minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(86px, 0.9fr) minmax(0, 1fr) minmax(46px, auto);
   gap: 9px;
   align-items: center;
+  min-width: 0;
 }
 
 .habit-row span,
@@ -690,6 +694,7 @@ h3 {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+  min-width: 0;
 }
 
 .habit-row strong {
@@ -703,6 +708,7 @@ h3 {
   border-radius: 999px;
   background: var(--bg);
   overflow: hidden;
+  min-width: 0;
 }
 
 .habit-meter div {
@@ -958,6 +964,7 @@ tr:last-child td {
 
   .insights-body {
     padding: 10px;
+    overflow: hidden;
   }
 
   .insight-stat-grid,
@@ -980,7 +987,20 @@ tr:last-child td {
   }
 
   .habit-row {
-    grid-template-columns: minmax(76px, 0.85fr) minmax(0, 1fr) 38px;
-    gap: 7px;
+    grid-template-columns: minmax(0, 1fr) minmax(48px, auto);
+    gap: 6px 8px;
+  }
+
+  .habit-row span {
+    overflow-wrap: anywhere;
+  }
+
+  .habit-row .habit-meter {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .habit-row strong {
+    justify-self: end;
   }
 }

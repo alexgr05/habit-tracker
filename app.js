@@ -716,9 +716,10 @@ function renderHabitConsistency(rows) {
     { label: "Floss", value: row => row.day.floss },
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental", value: row => row.day.mentalRoutine },
-    { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
-    { label: "4th Meal", value: row => row.day.fourthMeal },
-    { label: "Back Stretch", value: row => row.day.backStretching },
+    { label: "Study 7h", value: row => row.computed.studyOk, available: row => row.computed.mode === "semester" },
+    { label: "Sports", value: row => row.day.sports, available: row => row.computed.mode === "break" },
+    { label: "4th Meal", value: row => row.day.fourthMeal, available: row => row.computed.mode === "break" },
+    { label: "Back Stretch", value: row => row.day.backStretching, available: row => row.computed.mode === "break" },
     { label: "Sleep 8h", value: row => row.computed.sleepOk },
     { label: "Before 00", value: row => row.computed.asleepOk },
     { label: "Wake 8:30", value: row => row.computed.wakeOk },
@@ -732,12 +733,15 @@ function renderHabitConsistency(rows) {
   }
 
   els.habitConsistency.innerHTML = habits.map(habit => {
-    const percent = Math.round((rows.filter(row => habit.value(row)).length / rows.length) * 100);
+    const availableRows = rows.filter(row => !habit.available || habit.available(row));
+    const percent = availableRows.length
+      ? Math.round((availableRows.filter(row => habit.value(row)).length / availableRows.length) * 100)
+      : null;
     return `
       <article class="habit-row">
         <span>${habit.label}</span>
-        <div class="habit-meter"><div style="width: ${percent}%"></div></div>
-        <strong>${percent}%</strong>
+        <div class="habit-meter"><div style="width: ${percent ?? 0}%"></div></div>
+        <strong>${percent === null ? "n/a" : `${percent}%`}</strong>
       </article>
     `;
   }).join("");
@@ -773,17 +777,25 @@ function insightHabitRates(rows) {
     { label: "Floss", value: row => row.day.floss },
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental Routine", value: row => row.day.mentalRoutine },
-    { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
-    { label: "4th Meal", value: row => row.day.fourthMeal },
-    { label: "Back Stretching", value: row => row.day.backStretching },
+    { label: "Study 7h", value: row => row.computed.studyOk, available: row => row.computed.mode === "semester" },
+    { label: "Sports", value: row => row.day.sports, available: row => row.computed.mode === "break" },
+    { label: "4th Meal", value: row => row.day.fourthMeal, available: row => row.computed.mode === "break" },
+    { label: "Back Stretching", value: row => row.day.backStretching, available: row => row.computed.mode === "break" },
     { label: "8h Sleep", value: row => row.computed.sleepOk },
     { label: "No Social Media", value: row => row.day.noSocialMedia },
     { label: "No Porn", value: row => row.day.noPorn },
   ];
-  return habits.map(habit => ({
-    label: habit.label,
-    percent: Math.round((rows.filter(row => habit.value(row)).length / rows.length) * 100),
-  }));
+  return habits
+    .map(habit => {
+      const availableRows = rows.filter(row => !habit.available || habit.available(row));
+      return {
+        label: habit.label,
+        percent: availableRows.length
+          ? Math.round((availableRows.filter(row => habit.value(row)).length / availableRows.length) * 100)
+          : null,
+      };
+    })
+    .filter(habit => habit.percent !== null);
 }
 
 function trackedDates() {
