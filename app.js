@@ -18,13 +18,15 @@ const categories = [
   { key: "life", label: "Life" },
 ];
 
-const defaultDay = () => ({
-  mode: "semester",
+const defaultDay = (mode = "semester") => ({
+  mode,
   supplements: false,
   floss: false,
   legExercise: false,
   mentalRoutine: false,
   sports: false,
+  fourthMeal: false,
+  backStretching: false,
   studyHours: "",
   bedtime: "",
   wakeTime: "",
@@ -82,6 +84,8 @@ const els = {
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
   sportsTile: document.querySelector("#sportsTile"),
+  fourthMealTile: document.querySelector("#fourthMealTile"),
+  backStretchingTile: document.querySelector("#backStretchingTile"),
   studyHours: document.querySelector("#studyHours"),
   bedtime: document.querySelector("#bedtime"),
   wakeTime: document.querySelector("#wakeTime"),
@@ -363,7 +367,7 @@ async function loadCloudDays() {
   }
 
   for (const row of data || []) {
-    state.days[row.date] = { ...defaultDay(), ...row.data };
+    state.days[row.date] = { ...defaultDay(row.data?.mode), ...row.data };
   }
   localStorage.setItem(storageKey, JSON.stringify(state));
 }
@@ -457,9 +461,18 @@ function setupNetworkStatus() {
 
 function ensureDay(date) {
   if (!state.days[date]) {
-    state.days[date] = defaultDay();
+    state.days[date] = defaultDay(previousMode(date));
   }
   return state.days[date];
+}
+
+function previousMode(date) {
+  let cursor = addDays(date, -1);
+  while (cursor >= startDate) {
+    if (state.days[cursor]?.mode) return state.days[cursor].mode;
+    cursor = addDays(cursor, -1);
+  }
+  return "semester";
 }
 
 function render() {
@@ -476,6 +489,8 @@ function render() {
   els.sleepHours.value = computed.sleepHoursText;
   els.studyCard.hidden = breakMode;
   els.sportsTile.hidden = !breakMode;
+  els.fourthMealTile.hidden = !breakMode;
+  els.backStretchingTile.hidden = !breakMode;
   els.semesterMode.classList.toggle("is-active", !breakMode);
   els.breakMode.classList.toggle("is-active", breakMode);
 
@@ -553,7 +568,21 @@ function computeDay(date) {
   const studyOk = Number.isFinite(studyHours) && studyHours >= 7;
   const studyScore = Number.isFinite(studyHours) ? Math.max(0, Math.min(studyHours / 7, 1)) : 0;
   const studyOrSportsOk = mode === "break" ? day.sports : studyOk;
-  const studyOrSportsScore = mode === "break" ? Number(day.sports) : studyScore;
+  const activeScores = [
+    day.supplements,
+    day.floss,
+    day.legExercise,
+    day.mentalRoutine,
+    mode === "break" ? day.sports : studyScore,
+    asleepOk,
+    wakeOk,
+    sleepOk,
+    day.noSocialMedia,
+    day.noPorn,
+  ];
+  if (mode === "break") {
+    activeScores.push(day.fourthMeal, day.backStretching);
+  }
   const raw = {
     health: day.supplements && day.floss && day.legExercise,
     mental: day.mentalRoutine,
@@ -568,19 +597,8 @@ function computeDay(date) {
     sleep: raw.sleep || day.freezeUsed,
     avoidance: raw.avoidance || day.freezeUsed,
   };
-  const completed = [
-    day.supplements,
-    day.floss,
-    day.legExercise,
-    day.mentalRoutine,
-    studyOrSportsScore,
-    asleepOk,
-    wakeOk,
-    sleepOk,
-    day.noSocialMedia,
-    day.noPorn,
-  ].reduce((sum, value) => sum + Number(value), 0);
-  const dailyScore = Math.round((completed / 10) * 100);
+  const completed = activeScores.reduce((sum, value) => sum + Number(value), 0);
+  const dailyScore = Math.round((completed / activeScores.length) * 100);
   const lifeOk = dailyScore >= 80 || day.freezeUsed;
 
   return {
@@ -588,6 +606,7 @@ function computeDay(date) {
     studyOk,
     studyScore,
     studyOrSportsOk,
+    activeScoreItems: activeScores.length,
     asleepOk,
     wakeOk,
     sleepOk,
@@ -698,6 +717,8 @@ function renderHabitConsistency(rows) {
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental", value: row => row.day.mentalRoutine },
     { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
+    { label: "4th Meal", value: row => row.day.fourthMeal },
+    { label: "Back Stretch", value: row => row.day.backStretching },
     { label: "Sleep 8h", value: row => row.computed.sleepOk },
     { label: "Before 00", value: row => row.computed.asleepOk },
     { label: "Wake 8:30", value: row => row.computed.wakeOk },
@@ -753,6 +774,8 @@ function insightHabitRates(rows) {
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental Routine", value: row => row.day.mentalRoutine },
     { label: "Study/Sports", value: row => row.computed.studyOrSportsOk },
+    { label: "4th Meal", value: row => row.day.fourthMeal },
+    { label: "Back Stretching", value: row => row.day.backStretching },
     { label: "8h Sleep", value: row => row.computed.sleepOk },
     { label: "No Social Media", value: row => row.day.noSocialMedia },
     { label: "No Porn", value: row => row.day.noPorn },
@@ -774,6 +797,8 @@ function hasTrackedData(day) {
     day.legExercise ||
     day.mentalRoutine ||
     day.sports ||
+    day.fourthMeal ||
+    day.backStretching ||
     (day.studyHours !== "") ||
     day.bedtime ||
     day.wakeTime ||
