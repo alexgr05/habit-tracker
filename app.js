@@ -61,6 +61,13 @@ const els = {
   themeToggle: document.querySelector("#themeToggle"),
   summaryRows: document.querySelector("#summaryRows"),
   historyRows: document.querySelector("#historyRows"),
+  insightTrackedDays: document.querySelector("#insightTrackedDays"),
+  insightAverageScore: document.querySelector("#insightAverageScore"),
+  insightStreakDays: document.querySelector("#insightStreakDays"),
+  insightAverageStudy: document.querySelector("#insightAverageStudy"),
+  scoreTrend: document.querySelector("#scoreTrend"),
+  habitConsistency: document.querySelector("#habitConsistency"),
+  insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
   studyHours: document.querySelector("#studyHours"),
   bedtime: document.querySelector("#bedtime"),
@@ -411,6 +418,7 @@ function render() {
   }).join("");
 
   els.historyRows.innerHTML = makeHistoryRows();
+  renderInsights(stats);
 }
 
 function updateInputStatus(card, element, value, hasValue) {
@@ -533,6 +541,141 @@ function computeStats() {
   return stats;
 }
 
+function renderInsights(stats) {
+  const days = trackedDates().slice(-30);
+  const rows = days.map(date => {
+    const day = ensureDay(date);
+    const computed = computeDay(date);
+    return { date, day, computed };
+  });
+
+  const trackedCount = rows.length;
+  const averageScore = trackedCount
+    ? Math.round(rows.reduce((sum, row) => sum + row.computed.dailyScore, 0) / trackedCount)
+    : 0;
+  const streakDays = rows.filter(row => row.computed.lifeOk).length;
+  const studyRows = rows
+    .map(row => Number.parseFloat(row.day.studyHours))
+    .filter(Number.isFinite);
+  const averageStudy = studyRows.length
+    ? studyRows.reduce((sum, hours) => sum + hours, 0) / studyRows.length
+    : 0;
+
+  els.insightTrackedDays.textContent = trackedCount;
+  els.insightAverageScore.textContent = averageScore;
+  els.insightStreakDays.textContent = streakDays;
+  els.insightAverageStudy.textContent = `${formatNumber(averageStudy)}h`;
+
+  renderScoreTrend(rows.slice(-14));
+  renderHabitConsistency(rows);
+  renderInsightNotes(rows, stats, averageScore, averageStudy);
+}
+
+function renderScoreTrend(rows) {
+  if (rows.length === 0) {
+    els.scoreTrend.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+    return;
+  }
+
+  els.scoreTrend.innerHTML = rows.map(row => `
+    <article class="score-bar" title="${formatShortDate(row.date)}: ${row.computed.dailyScore}">
+      <div style="height: ${Math.max(row.computed.dailyScore, 4)}%"></div>
+      <span>${formatShortDate(row.date)}</span>
+    </article>
+  `).join("");
+}
+
+function renderHabitConsistency(rows) {
+  const habits = [
+    { label: "Supplements", value: row => row.day.supplements },
+    { label: "Floss", value: row => row.day.floss },
+    { label: "Leg Exercise", value: row => row.day.legExercise },
+    { label: "Mental", value: row => row.day.mentalRoutine },
+    { label: "Study 7h", value: row => row.computed.studyOk },
+    { label: "Sleep 8h", value: row => row.computed.sleepOk },
+    { label: "Before 00", value: row => row.computed.asleepOk },
+    { label: "Wake 8:30", value: row => row.computed.wakeOk },
+    { label: "No Social", value: row => row.day.noSocialMedia },
+    { label: "No Porn", value: row => row.day.noPorn },
+  ];
+
+  if (rows.length === 0) {
+    els.habitConsistency.innerHTML = `<p class="empty-insight">Track a few days to see patterns.</p>`;
+    return;
+  }
+
+  els.habitConsistency.innerHTML = habits.map(habit => {
+    const percent = Math.round((rows.filter(row => habit.value(row)).length / rows.length) * 100);
+    return `
+      <article class="habit-row">
+        <span>${habit.label}</span>
+        <div class="habit-meter"><div style="width: ${percent}%"></div></div>
+        <strong>${percent}%</strong>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderInsightNotes(rows, stats, averageScore, averageStudy) {
+  const notes = [];
+  if (rows.length === 0) {
+    notes.push("No tracked days yet. Start logging and this area will become useful.");
+  } else {
+    const best = rows.reduce((top, row) => row.computed.dailyScore > top.computed.dailyScore ? row : top, rows[0]);
+    const habitRates = insightHabitRates(rows);
+    const weakest = habitRates.reduce((low, item) => item.percent < low.percent ? item : low, habitRates[0]);
+    notes.push(`Best recent day: ${formatShortDate(best.date)} with ${best.computed.dailyScore} points.`);
+    notes.push(`Current life streak: ${stats.life.current} day${stats.life.current === 1 ? "" : "s"}.`);
+    notes.push(`Weakest tracked area: ${weakest.label} at ${weakest.percent}%.`);
+    if (averageScore >= 80) {
+      notes.push("Your recent average is streak-level.");
+    } else {
+      notes.push(`Recent average is ${Math.max(0, 80 - averageScore)} points below streak-level.`);
+    }
+    if (averageStudy > 0) {
+      notes.push(`Average study on logged study days: ${formatNumber(averageStudy)} hours.`);
+    }
+  }
+
+  els.insightNotes.innerHTML = notes.map(note => `<li>${note}</li>`).join("");
+}
+
+function insightHabitRates(rows) {
+  const habits = [
+    { label: "Supplements", value: row => row.day.supplements },
+    { label: "Floss", value: row => row.day.floss },
+    { label: "Leg Exercise", value: row => row.day.legExercise },
+    { label: "Mental Routine", value: row => row.day.mentalRoutine },
+    { label: "7h Study", value: row => row.computed.studyOk },
+    { label: "8h Sleep", value: row => row.computed.sleepOk },
+    { label: "No Social Media", value: row => row.day.noSocialMedia },
+    { label: "No Porn", value: row => row.day.noPorn },
+  ];
+  return habits.map(habit => ({
+    label: habit.label,
+    percent: Math.round((rows.filter(row => habit.value(row)).length / rows.length) * 100),
+  }));
+}
+
+function trackedDates() {
+  return sortedDates().filter(date => date <= activeDate && hasTrackedData(ensureDay(date)));
+}
+
+function hasTrackedData(day) {
+  return Boolean(
+    day.supplements ||
+    day.floss ||
+    day.legExercise ||
+    day.mentalRoutine ||
+    (day.studyHours !== "") ||
+    day.bedtime ||
+    day.wakeTime ||
+    day.noSocialMedia ||
+    day.noPorn ||
+    day.freezeUsed
+  );
+}
+
 function makeHistoryRows() {
   const rows = [];
   for (let offset = 0; offset < historyDays; offset += 1) {
@@ -626,6 +769,10 @@ function maxDate(a, b) {
 function formatShortDate(iso) {
   const [, month, day] = iso.split("-");
   return `${Number(day)}.${Number(month)}`;
+}
+
+function formatNumber(value) {
+  return Number.isFinite(value) ? value.toFixed(1).replace(".0", "") : "0";
 }
 
 function formatDayName(iso) {

@@ -166,6 +166,56 @@
           </details>
         </aside>
       </section>
+
+      <details class="detail-panel insights-panel" open>
+        <summary>Insights</summary>
+        <div class="insights-body">
+          <section class="insight-stat-grid" aria-label="Recent numbers">
+            <article class="summary-card">
+              <span>Tracked Days</span>
+              <strong id="insightTrackedDays">0</strong>
+            </article>
+            <article class="summary-card primary-streak">
+              <span>Average Score</span>
+              <strong id="insightAverageScore">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>80+ Days</span>
+              <strong id="insightStreakDays">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Avg Study</span>
+              <strong id="insightAverageStudy">0h</strong>
+            </article>
+          </section>
+
+          <section class="insight-grid" aria-label="Charts">
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Score Trend</h3>
+                <span>Recent tracked days</span>
+              </div>
+              <div id="scoreTrend" class="score-trend"></div>
+            </article>
+
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Habit Consistency</h3>
+                <span>Last 30 tracked days</span>
+              </div>
+              <div id="habitConsistency" class="habit-consistency"></div>
+            </article>
+          </section>
+
+          <section class="chart-panel">
+            <div class="chart-head">
+              <h3>Notes</h3>
+              <span>Automatic readout</span>
+            </div>
+            <ul id="insightNotes" class="insight-notes"></ul>
+          </section>
+        </div>
+      </details>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
