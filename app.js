@@ -8,6 +8,12 @@ const noPornStreakAnchorDays = 39;
 const historyDays = 14;
 const cloudReady = Boolean(window.supabase && supabaseUrl && supabaseKey);
 const supabaseClient = cloudReady ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+const themes = ["dark", "light", "calm"];
+const themeLabels = {
+  dark: "Dark",
+  light: "Light",
+  calm: "Calm Heat",
+};
 
 const categories = [
   { key: "health", label: "Health" },
@@ -123,7 +129,7 @@ els.signOutButton.addEventListener("click", signOut);
 els.semesterMode.addEventListener("click", () => setMode("semester"));
 els.breakMode.addEventListener("click", () => setMode("break"));
 els.themeToggle.addEventListener("click", () => {
-  theme = theme === "dark" ? "light" : "dark";
+  theme = themes[(themes.indexOf(theme) + 1) % themes.length];
   localStorage.setItem(themeKey, theme);
   applyTheme();
 });
@@ -165,13 +171,15 @@ function loadState() {
 
 function loadTheme() {
   const saved = localStorage.getItem(themeKey);
-  return saved === "light" ? "light" : "dark";
+  return themes.includes(saved) ? saved : "dark";
 }
 
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
-  els.themeToggle.textContent = theme === "dark" ? "Dark" : "Light";
-  els.themeToggle.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} theme`);
+  const nextTheme = themes[(themes.indexOf(theme) + 1) % themes.length];
+  els.themeToggle.textContent = themeLabels[theme];
+  els.themeToggle.setAttribute("aria-label", `Switch to ${themeLabels[nextTheme]} theme`);
+  els.themeToggle.title = `Switch to ${themeLabels[nextTheme]} theme`;
 }
 
 function saveState() {
