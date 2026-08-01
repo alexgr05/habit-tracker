@@ -709,8 +709,8 @@ th {
 
 th:first-child,
 td:first-child,
-.detail-panel:nth-of-type(2) th:nth-child(2),
-.detail-panel:nth-of-type(2) td:nth-child(2) {
+.history-panel th:nth-child(2),
+.history-panel td:nth-child(2) {
   text-align: left;
 }
 

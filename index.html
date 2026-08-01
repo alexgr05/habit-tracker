@@ -132,44 +132,6 @@
             </div>
             <button class="field-toggle freeze-action" data-field="freezeUsed" type="button">Activate Freeze</button>
           </section>
-
-          <details class="detail-panel">
-            <summary>Category Summary</summary>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Current</th>
-                    <th>Best</th>
-                    <th>Freeze Tokens</th>
-                    <th>Raw Perfect</th>
-                    <th>Used</th>
-                    <th>Today</th>
-                  </tr>
-                </thead>
-                <tbody id="summaryRows"></tbody>
-              </table>
-            </div>
-          </details>
-
-          <details class="detail-panel">
-            <summary>Recent History</summary>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    <th>Score</th>
-                    <th>Freeze</th>
-                    <th>Life Streak</th>
-                  </tr>
-                </thead>
-                <tbody id="historyRows"></tbody>
-              </table>
-            </div>
-          </details>
         </aside>
       </section>
 
@@ -219,6 +181,46 @@
               <span>Automatic readout</span>
             </div>
             <ul id="insightNotes" class="insight-notes"></ul>
+          </section>
+
+          <section class="insight-grid" aria-label="Insight tables">
+            <details class="detail-panel" open>
+              <summary>Category Summary</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Current</th>
+                      <th>Best</th>
+                      <th>Freeze Tokens</th>
+                      <th>Raw Perfect</th>
+                      <th>Used</th>
+                      <th>Today</th>
+                    </tr>
+                  </thead>
+                  <tbody id="summaryRows"></tbody>
+                </table>
+              </div>
+            </details>
+
+            <details class="detail-panel history-panel" open>
+              <summary>Recent History</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Day</th>
+                      <th>Score</th>
+                      <th>Freeze</th>
+                      <th>Life Streak</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyRows"></tbody>
+                </table>
+              </div>
+            </details>
           </section>
         </div>
       </details>
