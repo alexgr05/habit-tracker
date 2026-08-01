@@ -36,6 +36,7 @@ let currentUser = null;
 let cloudHydrated = false;
 let saveTimer = null;
 let syncInProgress = false;
+let passwordRecoveryMode = false;
 const pendingSaveDates = new Set();
 
 const els = {
@@ -49,6 +50,10 @@ const els = {
   authPassword: document.querySelector("#authPassword"),
   signInButton: document.querySelector("#signInButton"),
   signUpButton: document.querySelector("#signUpButton"),
+  resetPasswordButton: document.querySelector("#resetPasswordButton"),
+  passwordResetForm: document.querySelector("#passwordResetForm"),
+  newPassword: document.querySelector("#newPassword"),
+  updatePasswordButton: document.querySelector("#updatePasswordButton"),
   signedInPanel: document.querySelector("#signedInPanel"),
   signedInEmail: document.querySelector("#signedInEmail"),
   signOutButton: document.querySelector("#signOutButton"),
@@ -98,6 +103,8 @@ document.querySelector("#nextDay").addEventListener("click", () => {
 
 els.signInButton.addEventListener("click", signIn);
 els.signUpButton.addEventListener("click", signUp);
+els.resetPasswordButton.addEventListener("click", sendPasswordReset);
+els.updatePasswordButton.addEventListener("click", updatePassword);
 els.signOutButton.addEventListener("click", signOut);
 els.themeToggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
@@ -166,7 +173,14 @@ async function initializeCloud() {
   const { data } = await supabaseClient.auth.getSession();
   await handleSession(data.session);
 
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      passwordRecoveryMode = true;
+      currentUser = session?.user || null;
+      renderAuth();
+      setAuthMessage("Enter a new password.");
+      return;
+    }
     handleSession(session);
   });
 }
@@ -217,8 +231,48 @@ async function signIn() {
   setAuthMessage("");
 }
 
+async function sendPasswordReset() {
+  if (!cloudReady) return;
+  const email = els.authEmail.value.trim();
+  if (!email) {
+    setAuthMessage("Enter your email first.");
+    return;
+  }
+
+  setAuthMessage("Sending reset email...");
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  setAuthMessage("Reset email sent. Open the link in your inbox.");
+}
+
+async function updatePassword() {
+  if (!cloudReady) return;
+  const password = els.newPassword.value;
+  if (!password || password.length < 6) {
+    setAuthMessage("Use at least 6 characters.");
+    return;
+  }
+
+  setAuthMessage("Saving new password...");
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  passwordRecoveryMode = false;
+  els.newPassword.value = "";
+  renderAuth();
+  setAuthMessage("Password updated. You are signed in.");
+}
+
 async function signOut() {
   if (!cloudReady) return;
+  passwordRecoveryMode = false;
   await supabaseClient.auth.signOut();
   setAuthMessage("Signed out. Local mode active.");
 }
@@ -235,10 +289,11 @@ function getCredentials() {
 
 function renderAuth() {
   const signedIn = Boolean(currentUser);
-  els.authPanel.classList.toggle("is-compact", signedIn);
-  els.authTitle.textContent = signedIn ? "Cloud synced" : "Sign in";
-  els.authForm.hidden = signedIn;
-  els.signedInPanel.hidden = !signedIn;
+  els.authPanel.classList.toggle("is-compact", signedIn && !passwordRecoveryMode);
+  els.authTitle.textContent = passwordRecoveryMode ? "New password" : signedIn ? "Cloud synced" : "Sign in";
+  els.authForm.hidden = signedIn || passwordRecoveryMode;
+  els.passwordResetForm.hidden = !passwordRecoveryMode;
+  els.signedInPanel.hidden = !signedIn || passwordRecoveryMode;
   els.signedInEmail.textContent = signedIn ? currentUser.email : "";
 }
 

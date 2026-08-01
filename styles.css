@@ -131,12 +131,28 @@ button:hover {
 }
 
 .secondary,
-.icon-action {
+.icon-action,
+.text-action {
   color: var(--muted);
 }
 
 .icon-action {
   min-width: 70px;
+}
+
+.text-action {
+  min-height: auto;
+  border: 0;
+  background: transparent;
+  padding: 3px 2px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.text-action:hover {
+  color: var(--amber);
+  transform: none;
 }
 
 .sync-status {
