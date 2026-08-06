@@ -38,6 +38,7 @@ const defaultDay = (mode = "semester") => ({
   wakeTime: "",
   noSocialMedia: false,
   noPorn: false,
+  masturbating: false,
   freezeUsed: false,
 });
 
@@ -606,7 +607,8 @@ function computeDay(date) {
     avoidance: raw.avoidance || day.freezeUsed,
   };
   const completed = activeScores.reduce((sum, value) => sum + Number(value), 0);
-  const dailyScore = Math.round((completed / activeScores.length) * 100);
+  const penalty = day.masturbating ? 10 : 0;
+  const dailyScore = Math.max(0, Math.round((completed / activeScores.length) * 100) - penalty);
   const lifeOk = dailyScore >= 80 || day.freezeUsed;
 
   return {
@@ -615,6 +617,7 @@ function computeDay(date) {
     studyScore,
     studyOrSportsOk,
     activeScoreItems: activeScores.length,
+    penalty,
     asleepOk,
     wakeOk,
     sleepOk,
@@ -824,6 +827,7 @@ function hasTrackedData(day) {
     day.wakeTime ||
     day.noSocialMedia ||
     day.noPorn ||
+    day.masturbating ||
     day.freezeUsed ||
     (day.mode && day.mode !== "semester")
   );
