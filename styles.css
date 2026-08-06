@@ -935,6 +935,10 @@ tr:last-child td {
     height: 15px;
   }
 
+  .penalty-habit {
+    grid-column: 1 / -1;
+  }
+
   .input-card {
     min-height: 88px;
     padding: 8px;
