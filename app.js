@@ -382,7 +382,7 @@ async function loadCloudDays() {
 }
 
 async function syncAllLocalDays() {
-  const dates = Object.keys(state.days);
+  const dates = Object.keys(state.days).filter(date => hasTrackedData(state.days[date]));
   for (const date of dates) {
     pendingSaveDates.add(date);
   }
@@ -411,37 +411,36 @@ async function savePendingDays() {
 
   syncInProgress = true;
   setSyncStatus("Saving...", true, "saving");
-  let hadError = false;
-  while (pendingSaveDates.size > 0 && navigator.onLine) {
-    const [date] = pendingSaveDates;
-    const saved = await saveCloudDay(date);
-    if (saved) {
+  const dates = [...pendingSaveDates].filter(date => state.days[date]);
+  const saved = await saveCloudDays(dates);
+  if (saved) {
+    for (const date of dates) {
       pendingSaveDates.delete(date);
-    } else {
-      hadError = true;
-      break;
     }
   }
   syncInProgress = false;
 
   if (!navigator.onLine) {
     setSyncStatus("Offline", true, "offline");
-  } else if (!hadError && pendingSaveDates.size === 0) {
+  } else if (saved && pendingSaveDates.size === 0) {
     setSyncStatus("Cloud synced", true);
     setAuthMessage("");
+  } else if (saved && pendingSaveDates.size > 0) {
+    savePendingDays();
   } else {
     setSyncStatus("Cloud error", true, "error");
   }
 }
 
-async function saveCloudDay(date) {
-  if (!currentUser || !state.days[date]) return true;
-  const { error } = await supabaseClient.from("habit_days").upsert({
+async function saveCloudDays(dates) {
+  if (!currentUser || dates.length === 0) return true;
+  const rows = dates.map(date => ({
     user_id: currentUser.id,
     date,
     data: state.days[date],
     updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id,date" });
+  }));
+  const { error } = await supabaseClient.from("habit_days").upsert(rows, { onConflict: "user_id,date" });
 
   if (error) {
     setSyncStatus("Cloud error", true, "error");
