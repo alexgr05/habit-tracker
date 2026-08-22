@@ -26,7 +26,7 @@
         </div>
       </section>
 
-      <section id="todayView" class="dashboard-grid" aria-label="Habit dashboard">
+      <section id="todayView" class="dashboard-grid app-view" data-view="today" aria-label="Habit dashboard">
         <section class="tracker-panel" aria-label="Daily tracker">
           <div class="panel-head">
             <div>
@@ -83,32 +83,6 @@
         </section>
 
         <aside class="streak-panel" aria-label="Streak summary">
-          <section id="authPanel" class="auth-panel" aria-label="Cloud sync">
-            <div class="auth-head">
-              <p class="eyebrow">Cloud</p>
-              <h2 id="authTitle">Sign in</h2>
-            </div>
-            <div id="authForm" class="auth-form">
-              <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
-              <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password">
-              <div class="auth-actions">
-                <button id="signInButton" type="button">Sign in</button>
-                <button id="signUpButton" class="secondary" type="button">Create account</button>
-              </div>
-              <button id="resetPasswordButton" class="text-action" type="button">Reset password</button>
-            </div>
-            <div id="passwordResetForm" class="auth-form" hidden>
-              <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password">
-              <button id="updatePasswordButton" type="button">Save new password</button>
-            </div>
-            <div id="signedInPanel" class="signed-in-panel" hidden>
-              <p id="signedInEmail"></p>
-              <button id="changePasswordButton" class="secondary" type="button">Change password</button>
-              <button id="signOutButton" class="secondary" type="button">Sign out</button>
-            </div>
-            <p id="authMessage" class="auth-message"></p>
-          </section>
-
           <section class="flame-card" aria-label="Daily score">
             <div class="flame-topline">
               <div>
@@ -148,7 +122,7 @@
         </aside>
       </section>
 
-      <details id="insightsView" class="detail-panel insights-panel" open>
+      <details id="insightsView" class="detail-panel insights-panel app-view" data-view="insights" open hidden>
         <summary>Insights</summary>
         <div class="insights-body">
           <section class="insight-stat-grid" aria-label="Recent numbers">
@@ -275,12 +249,40 @@
           </section>
         </div>
       </details>
+
+      <section id="settingsView" class="settings-view app-view" data-view="settings" hidden aria-label="Settings">
+        <section id="authPanel" class="auth-panel" aria-label="Cloud sync">
+          <div class="auth-head">
+            <p class="eyebrow">Cloud</p>
+            <h2 id="authTitle">Sign in</h2>
+          </div>
+          <div id="authForm" class="auth-form">
+            <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password">
+            <div class="auth-actions">
+              <button id="signInButton" type="button">Sign in</button>
+              <button id="signUpButton" class="secondary" type="button">Create account</button>
+            </div>
+            <button id="resetPasswordButton" class="text-action" type="button">Reset password</button>
+          </div>
+          <div id="passwordResetForm" class="auth-form" hidden>
+            <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password">
+            <button id="updatePasswordButton" type="button">Save new password</button>
+          </div>
+          <div id="signedInPanel" class="signed-in-panel" hidden>
+            <p id="signedInEmail"></p>
+            <button id="changePasswordButton" class="secondary" type="button">Change password</button>
+            <button id="signOutButton" class="secondary" type="button">Sign out</button>
+          </div>
+          <p id="authMessage" class="auth-message"></p>
+        </section>
+      </section>
     </main>
 
     <nav class="mobile-nav" aria-label="Mobile sections">
-      <a href="#todayView">Today</a>
-      <a href="#insightsView">Insights</a>
-      <a href="#authPanel">Settings</a>
+      <button class="view-nav-button is-active" data-view-target="today" type="button">Today</button>
+      <button class="view-nav-button" data-view-target="insights" type="button">Insights</button>
+      <button class="view-nav-button" data-view-target="settings" type="button">Settings</button>
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

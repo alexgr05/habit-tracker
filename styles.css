@@ -88,7 +88,11 @@ input {
 .app-shell {
   width: min(1240px, calc(100% - 28px));
   margin: 0 auto;
-  padding: 24px 0 32px;
+  padding: 24px 0 96px;
+}
+
+.app-view[hidden] {
+  display: none !important;
 }
 
 .topbar {
@@ -215,6 +219,12 @@ button:hover {
   grid-template-columns: minmax(0, 1.58fr) minmax(330px, 0.92fr);
   gap: 14px;
   align-items: start;
+}
+
+.settings-view {
+  display: grid;
+  max-width: 620px;
+  margin: 0 auto;
 }
 
 .tracker-panel,
@@ -979,7 +989,42 @@ tr:last-child td {
 }
 
 .mobile-nav {
-  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(520px, calc(100% - 28px));
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-strong) 94%, transparent);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.view-nav-button {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.view-nav-button:hover,
+.view-nav-button:focus,
+.view-nav-button.is-active {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--line));
+  background: var(--amber-wash);
+  transform: none;
 }
 
 @media (max-width: 980px) {
@@ -1245,35 +1290,15 @@ tr:last-child td {
   }
 
   .mobile-nav {
-    position: fixed;
     left: 10px;
     right: 10px;
     bottom: 10px;
-    z-index: 20;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    padding: 6px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
-    box-shadow: var(--shadow);
+    width: auto;
+    transform: none;
   }
 
-  .mobile-nav a {
+  .view-nav-button {
     min-height: 42px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-    color: var(--muted);
-    text-decoration: none;
     font-size: 13px;
-    font-weight: 900;
-  }
-
-  .mobile-nav a:focus,
-  .mobile-nav a:hover {
-    color: var(--ink);
-    background: var(--amber-wash);
   }
 }

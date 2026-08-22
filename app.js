@@ -54,6 +54,8 @@ const pendingSaveDates = new Set();
 
 const els = {
   todayLine: document.querySelector("#todayLine"),
+  appViews: document.querySelectorAll(".app-view"),
+  viewNavButtons: document.querySelectorAll(".view-nav-button"),
   todayScore: document.querySelector("#todayScore"),
   syncStatus: document.querySelector("#syncStatus"),
   authPanel: document.querySelector("#authPanel"),
@@ -115,6 +117,7 @@ const els = {
 
 applyTheme();
 setupNetworkStatus();
+setActiveView("today");
 
 document.querySelector("#prevDay").addEventListener("click", () => {
   activeDate = addDays(activeDate, -1);
@@ -138,6 +141,12 @@ els.themeToggle.addEventListener("click", () => {
   theme = themes[(themes.indexOf(theme) + 1) % themes.length];
   localStorage.setItem(themeKey, theme);
   applyTheme();
+});
+
+els.viewNavButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setActiveView(button.dataset.viewTarget);
+  });
 });
 
 els.activeDate.addEventListener("change", event => {
@@ -198,6 +207,18 @@ function setMode(mode) {
   day.mode = mode;
   saveState();
   render();
+}
+
+function setActiveView(view) {
+  els.appViews.forEach(section => {
+    section.hidden = section.dataset.view !== view;
+  });
+  els.viewNavButtons.forEach(button => {
+    const active = button.dataset.viewTarget === view;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 async function initializeCloud() {
