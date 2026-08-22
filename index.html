@@ -22,7 +22,6 @@
         </div>
         <div class="actions">
           <span id="syncStatus" class="sync-status">Local</span>
-          <button id="themeToggle" class="icon-action" type="button" aria-label="Switch theme" title="Switch theme">Dark</button>
         </div>
       </section>
 
@@ -106,18 +105,6 @@
               <span>Best Life</span>
               <strong id="bestLife">0</strong>
             </article>
-            <article class="summary-card">
-              <span>Freeze Used</span>
-              <strong id="freezeState">No</strong>
-            </article>
-          </section>
-
-          <section class="protection-panel" aria-label="Freeze protection">
-            <div>
-              <p class="eyebrow">Protection</p>
-              <h2>Streak Freeze</h2>
-            </div>
-            <button class="field-toggle freeze-action" data-field="freezeUsed" type="button">Activate Freeze</button>
           </section>
         </aside>
       </section>
@@ -218,9 +205,6 @@
                       <th>Category</th>
                       <th>Current</th>
                       <th>Best</th>
-                      <th>Freeze Tokens</th>
-                      <th>Raw Perfect</th>
-                      <th>Used</th>
                       <th>Today</th>
                     </tr>
                   </thead>
@@ -238,7 +222,6 @@
                       <th>Date</th>
                       <th>Day</th>
                       <th>Score</th>
-                      <th>Freeze</th>
                       <th>Life Streak</th>
                     </tr>
                   </thead>
@@ -251,6 +234,14 @@
       </details>
 
       <section id="settingsView" class="settings-view app-view" data-view="settings" hidden aria-label="Settings">
+        <section class="settings-panel" aria-label="Design settings">
+          <div>
+            <p class="eyebrow">Design</p>
+            <h2>Theme</h2>
+          </div>
+          <button id="themeToggle" class="icon-action" type="button" aria-label="Switch theme" title="Switch theme">Dark</button>
+        </section>
+
         <section id="authPanel" class="auth-panel" aria-label="Cloud sync">
           <div class="auth-head">
             <p class="eyebrow">Cloud</p>

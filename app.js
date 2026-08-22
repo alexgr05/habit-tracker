@@ -39,7 +39,6 @@ const defaultDay = (mode = "semester") => ({
   noSocialMedia: false,
   noPorn: false,
   masturbating: false,
-  freezeUsed: false,
 });
 
 let state = loadState();
@@ -76,7 +75,6 @@ const els = {
   authMessage: document.querySelector("#authMessage"),
   lifeStreak: document.querySelector("#lifeStreak"),
   bestLife: document.querySelector("#bestLife"),
-  freezeState: document.querySelector("#freezeState"),
   scoreFill: document.querySelector("#scoreFill"),
   scoreStatus: document.querySelector("#scoreStatus"),
   themeToggle: document.querySelector("#themeToggle"),
@@ -532,9 +530,6 @@ function render() {
     const value = Boolean(day[button.dataset.field]);
     button.classList.toggle("is-on", value);
     button.setAttribute("aria-pressed", String(value));
-    if (button.classList.contains("freeze-action")) {
-      button.textContent = value ? "Freeze Active" : "Activate Freeze";
-    }
   });
 
   if (!breakMode) {
@@ -546,10 +541,9 @@ function render() {
 
   els.todayScore.textContent = computed.dailyScore;
   els.scoreFill.style.width = `${computed.dailyScore}%`;
-  els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk, day.freezeUsed);
+  els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk);
   els.lifeStreak.textContent = stats.life.current;
   els.bestLife.textContent = stats.life.best;
-  els.freezeState.textContent = yesNo(day.freezeUsed);
   els.noPornTileStreak.textContent = `${noPornStreakAt(activeDate)}d`;
 
   els.summaryRows.innerHTML = categories.map(category => {
@@ -559,9 +553,6 @@ function render() {
         <td>${category.label}</td>
         <td>${item.current}</td>
         <td>${item.best}</td>
-        <td>${item.tokens}</td>
-        <td>${item.rawPerfect}</td>
-        <td>${item.used}</td>
         <td>${item.today}</td>
       </tr>
     `;
@@ -582,8 +573,7 @@ function yesNo(value) {
   return value ? "Yes" : "No";
 }
 
-function scoreStatus(score, lifeOk, freezeUsed) {
-  if (lifeOk && freezeUsed) return "Streak protected";
+function scoreStatus(score, lifeOk) {
   if (score === 100) return "Perfect day burning";
   if (lifeOk) return "Streak burning";
   if (score >= 70) return "Strong partial";
@@ -633,16 +623,16 @@ function computeDay(date) {
     avoidance: day.noSocialMedia && day.noPorn && asleepOk,
   };
   const ok = {
-    health: raw.health || day.freezeUsed,
-    mental: raw.mental || day.freezeUsed,
-    study: raw.study || day.freezeUsed,
-    sleep: raw.sleep || day.freezeUsed,
-    avoidance: raw.avoidance || day.freezeUsed,
+    health: raw.health,
+    mental: raw.mental,
+    study: raw.study,
+    sleep: raw.sleep,
+    avoidance: raw.avoidance,
   };
   const completed = scoreItems.reduce((sum, item) => sum + item.value, 0);
   const penalty = day.masturbating ? 10 : 0;
   const dailyScore = Math.max(0, Math.round((completed / scoreItems.length) * 100) - penalty);
-  const lifeOk = dailyScore >= 80 || day.freezeUsed;
+  const lifeOk = dailyScore >= 80;
 
   return {
     mode,
@@ -671,9 +661,6 @@ function computeStats() {
     stats[category.key] = {
       current: 0,
       best: 0,
-      tokens: 0,
-      rawPerfect: 0,
-      used: 0,
       today: "Open",
     };
   }
@@ -682,30 +669,23 @@ function computeStats() {
   const bests = Object.fromEntries(categories.map(category => [category.key, 0]));
 
   for (const date of dates) {
-    const day = ensureDay(date);
     const computed = computeDay(date);
     for (const key of ["health", "mental", "study", "sleep", "avoidance"]) {
       const ok = computed.ok[key];
       streaks[key] = ok ? streaks[key] + 1 : 0;
       bests[key] = Math.max(bests[key], streaks[key]);
-      if (computed.raw[key]) stats[key].rawPerfect += 1;
-      if (day.freezeUsed) stats[key].used += 1;
     }
     streaks.life = computed.lifeOk ? streaks.life + 1 : 0;
     bests.life = Math.max(bests.life, streaks.life);
-    if (computed.lifeOk && !day.freezeUsed) stats.life.rawPerfect += 1;
   }
 
   for (const key of ["health", "mental", "study", "sleep", "avoidance"]) {
     stats[key].current = streaks[key];
     stats[key].best = bests[key];
-    stats[key].tokens = Math.max(0, Math.floor(stats[key].rawPerfect / 10) - stats[key].used);
-    stats[key].today = computeDay(activeDate).ok[key] ? "Protected" : "Open";
+    stats[key].today = computeDay(activeDate).ok[key] ? "Active" : "Open";
   }
   stats.life.current = streaks.life;
   stats.life.best = bests.life;
-  stats.life.tokens = "";
-  stats.life.used = "";
   stats.life.today = computeDay(activeDate).lifeOk ? "Active" : "Partial";
 
   return stats;
@@ -1073,7 +1053,6 @@ function hasTrackedData(day) {
     day.noSocialMedia ||
     day.noPorn ||
     day.masturbating ||
-    day.freezeUsed ||
     (day.mode && day.mode !== "semester")
   );
 }
@@ -1090,7 +1069,6 @@ function makeHistoryRows() {
         <td>${formatShortDate(date)}</td>
         <td>${formatDayName(date)}</td>
         <td>${computed.dailyScore}</td>
-        <td>${yesNo(day.freezeUsed)}</td>
         <td>${lifeStreak}</td>
       </tr>
     `);

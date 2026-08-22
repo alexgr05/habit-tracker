@@ -223,21 +223,31 @@ button:hover {
 
 .settings-view {
   display: grid;
+  gap: 12px;
   max-width: 620px;
   margin: 0 auto;
 }
 
 .tracker-panel,
+.settings-panel,
 .auth-panel,
 .flame-card,
 .summary-card,
-.protection-panel,
 .chart-panel,
 .detail-panel {
   background: linear-gradient(180deg, var(--panel-strong), var(--panel));
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
+}
+
+.settings-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px;
+  box-shadow: none;
 }
 
 .tracker-panel {
@@ -572,7 +582,7 @@ input:focus {
 
 .streak-stack {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -597,33 +607,6 @@ input:focus {
 
 .primary-streak strong {
   color: var(--amber);
-}
-
-.protection-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 15px;
-  box-shadow: none;
-}
-
-.freeze-action {
-  min-width: 152px;
-  min-height: 48px;
-  color: var(--amber);
-  border-color: color-mix(in srgb, var(--amber) 58%, var(--line));
-  background: var(--amber-wash);
-  font-weight: 900;
-}
-
-.freeze-action.is-on {
-  color: var(--ink);
-  border-color: var(--amber);
-  background:
-    linear-gradient(90deg, rgba(249, 115, 22, 0.32), rgba(245, 158, 11, 0.22)),
-    var(--panel-strong);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.22), 0 0 24px rgba(245, 158, 11, 0.18);
 }
 
 .detail-panel {
@@ -1058,10 +1041,6 @@ tr:last-child td {
   .insight-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .protection-panel {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 540px) {
@@ -1105,9 +1084,9 @@ tr:last-child td {
   }
 
   .tracker-panel,
+  .settings-panel,
   .auth-panel,
-  .flame-card,
-  .protection-panel {
+  .flame-card {
     padding: 12px;
   }
 
@@ -1133,7 +1112,7 @@ tr:last-child td {
   }
 
   .streak-stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -1200,16 +1179,6 @@ tr:last-child td {
 
   .summary-card strong {
     font-size: 25px;
-  }
-
-  .protection-panel {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .freeze-action {
-    width: 100%;
-    min-width: 0;
   }
 
   .detail-panel summary {
