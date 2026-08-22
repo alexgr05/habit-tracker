@@ -691,7 +691,7 @@ function computeStats() {
 }
 
 function renderInsights(stats) {
-  const days = trackedDates().slice(-30);
+  const days = trackedDates();
   const rows = days.map(date => {
     const day = ensureDay(date);
     const computed = computeDay(date);
