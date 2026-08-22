@@ -86,8 +86,12 @@ const els = {
   insightAverageScore: document.querySelector("#insightAverageScore"),
   insightStreakDays: document.querySelector("#insightStreakDays"),
   insightAverageStudy: document.querySelector("#insightAverageStudy"),
+  insightPenaltyDays: document.querySelector("#insightPenaltyDays"),
   scoreTrend: document.querySelector("#scoreTrend"),
   habitConsistency: document.querySelector("#habitConsistency"),
+  scoreDrivers: document.querySelector("#scoreDrivers"),
+  modeComparison: document.querySelector("#modeComparison"),
+  relationshipInsights: document.querySelector("#relationshipInsights"),
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
   sportsTile: document.querySelector("#sportsTile"),
@@ -576,20 +580,28 @@ function computeDay(date) {
   const studyOk = Number.isFinite(studyHours) && studyHours >= 7;
   const studyScore = Number.isFinite(studyHours) ? Math.max(0, Math.min(studyHours / 7, 1)) : 0;
   const studyOrSportsOk = mode === "break" ? day.sports : studyOk;
-  const activeScores = [
-    day.supplements,
-    day.floss,
-    day.legExercise,
-    day.mentalRoutine,
-    mode === "break" ? day.sports : studyScore,
-    asleepOk,
-    wakeOk,
-    sleepOk,
-    day.noSocialMedia,
-    day.noPorn,
+  const scoreItems = [
+    { key: "supplements", label: "Supplements", group: "health", value: Number(day.supplements) },
+    { key: "floss", label: "Floss", group: "health", value: Number(day.floss) },
+    { key: "legExercise", label: "Leg Exercise", group: "health", value: Number(day.legExercise) },
+    { key: "mentalRoutine", label: "Mental Routine", group: "mental", value: Number(day.mentalRoutine) },
+    {
+      key: mode === "break" ? "sports" : "studyHours",
+      label: mode === "break" ? "Sports" : "Study Hours",
+      group: "study",
+      value: Number(mode === "break" ? day.sports : studyScore),
+    },
+    { key: "asleep", label: "Before 00", group: "sleep", value: Number(asleepOk) },
+    { key: "wake", label: "Wake 8:30", group: "sleep", value: Number(wakeOk) },
+    { key: "sleep8h", label: "8h Sleep", group: "sleep", value: Number(sleepOk) },
+    { key: "noSocialMedia", label: "No Social Media", group: "avoidance", value: Number(day.noSocialMedia) },
+    { key: "noPorn", label: "No Porn", group: "avoidance", value: Number(day.noPorn) },
   ];
   if (mode === "break") {
-    activeScores.push(day.fourthMeal, day.backStretching);
+    scoreItems.push(
+      { key: "fourthMeal", label: "4th Meal", group: "health", value: Number(day.fourthMeal) },
+      { key: "backStretching", label: "Back Stretching", group: "health", value: Number(day.backStretching) },
+    );
   }
   const raw = {
     health: day.supplements && day.floss && day.legExercise,
@@ -605,9 +617,9 @@ function computeDay(date) {
     sleep: raw.sleep || day.freezeUsed,
     avoidance: raw.avoidance || day.freezeUsed,
   };
-  const completed = activeScores.reduce((sum, value) => sum + Number(value), 0);
+  const completed = scoreItems.reduce((sum, item) => sum + item.value, 0);
   const penalty = day.masturbating ? 10 : 0;
-  const dailyScore = Math.max(0, Math.round((completed / activeScores.length) * 100) - penalty);
+  const dailyScore = Math.max(0, Math.round((completed / scoreItems.length) * 100) - penalty);
   const lifeOk = dailyScore >= 80 || day.freezeUsed;
 
   return {
@@ -615,7 +627,8 @@ function computeDay(date) {
     studyOk,
     studyScore,
     studyOrSportsOk,
-    activeScoreItems: activeScores.length,
+    activeScoreItems: scoreItems.length,
+    scoreItems,
     penalty,
     asleepOk,
     wakeOk,
@@ -695,11 +708,13 @@ function renderInsights(stats) {
   const averageStudy = studyRows.length
     ? studyRows.reduce((sum, hours) => sum + hours, 0) / studyRows.length
     : 0;
+  const penaltyDays = rows.filter(row => row.day.masturbating).length;
 
   els.insightTrackedDays.textContent = trackedCount;
   els.insightAverageScore.textContent = averageScore;
   els.insightStreakDays.textContent = streakDays;
   els.insightAverageStudy.textContent = `${formatNumber(averageStudy)}h`;
+  els.insightPenaltyDays.textContent = penaltyDays;
 
   renderScoreTrend(rows.slice(-14));
   renderHabitConsistency(rows);
@@ -776,9 +791,23 @@ function renderInsightNotes(rows, stats, averageScore, averageStudy) {
     if (averageStudy > 0) {
       notes.push(`Average study on logged study days: ${formatNumber(averageStudy)} hours.`);
     }
+    const noPornClean = longestCleanStreak(rows, row => row.day.noPorn);
+    const noSocialClean = longestCleanStreak(rows, row => row.day.noSocialMedia);
+    const noMasturbatingClean = longestCleanStreak(rows, row => !row.day.masturbating);
+    notes.push(`Longest clean streaks: no porn ${noPornClean}d, no social ${noSocialClean}d, no masturbating ${noMasturbatingClean}d.`);
   }
 
   els.insightNotes.innerHTML = notes.map(note => `<li>${note}</li>`).join("");
+}
+
+function longestCleanStreak(rows, isClean) {
+  let current = 0;
+  let best = 0;
+  for (const row of rows) {
+    current = isClean(row) ? current + 1 : 0;
+    best = Math.max(best, current);
+  }
+  return best;
 }
 
 function insightHabitRates(rows) {

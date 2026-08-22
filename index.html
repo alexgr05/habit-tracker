@@ -26,7 +26,7 @@
         </div>
       </section>
 
-      <section class="dashboard-grid" aria-label="Habit dashboard">
+      <section id="todayView" class="dashboard-grid" aria-label="Habit dashboard">
         <section class="tracker-panel" aria-label="Daily tracker">
           <div class="panel-head">
             <div>
@@ -148,7 +148,7 @@
         </aside>
       </section>
 
-      <details class="detail-panel insights-panel" open>
+      <details id="insightsView" class="detail-panel insights-panel" open>
         <summary>Insights</summary>
         <div class="insights-body">
           <section class="insight-stat-grid" aria-label="Recent numbers">
@@ -168,6 +168,10 @@
               <span>Avg Study</span>
               <strong id="insightAverageStudy">0h</strong>
             </article>
+            <article class="summary-card">
+              <span>Penalty Days</span>
+              <strong id="insightPenaltyDays">0</strong>
+            </article>
           </section>
 
           <section class="insight-grid" aria-label="Charts">
@@ -186,6 +190,32 @@
               </div>
               <div id="habitConsistency" class="habit-consistency"></div>
             </article>
+          </section>
+
+          <section class="insight-grid" aria-label="Score analysis">
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Score Drivers</h3>
+                <span>Average points lost</span>
+              </div>
+              <div id="scoreDrivers" class="insight-list"></div>
+            </article>
+
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Mode Comparison</h3>
+                <span>Semester vs break</span>
+              </div>
+              <div id="modeComparison" class="mode-comparison"></div>
+            </article>
+          </section>
+
+          <section class="chart-panel">
+            <div class="chart-head">
+              <h3>Relationships</h3>
+              <span>Normalized comparisons</span>
+            </div>
+            <div id="relationshipInsights" class="relationship-grid"></div>
           </section>
 
           <section class="chart-panel">
@@ -238,6 +268,12 @@
         </div>
       </details>
     </main>
+
+    <nav class="mobile-nav" aria-label="Mobile sections">
+      <a href="#todayView">Today</a>
+      <a href="#insightsView">Insights</a>
+      <a href="#authPanel">Settings</a>
+    </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>

@@ -812,6 +812,10 @@ tr:last-child td {
   color: var(--red);
 }
 
+.mobile-nav {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -852,7 +856,7 @@ tr:last-child td {
 @media (max-width: 540px) {
   .app-shell {
     width: 100%;
-    padding: 12px 10px 22px;
+    padding: 12px 10px 88px;
   }
 
   .topbar {
@@ -1042,5 +1046,38 @@ tr:last-child td {
 
   .habit-row strong {
     justify-self: end;
+  }
+
+  .mobile-nav {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
+    box-shadow: var(--shadow);
+  }
+
+  .mobile-nav a {
+    min-height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .mobile-nav a:focus,
+  .mobile-nav a:hover {
+    color: var(--ink);
+    background: var(--amber-wash);
   }
 }
