@@ -88,6 +88,7 @@ const els = {
   insightAverageStudy: document.querySelector("#insightAverageStudy"),
   insightPenaltyDays: document.querySelector("#insightPenaltyDays"),
   scoreTrend: document.querySelector("#scoreTrend"),
+  weeklyScoreTrend: document.querySelector("#weeklyScoreTrend"),
   habitConsistency: document.querySelector("#habitConsistency"),
   scoreDrivers: document.querySelector("#scoreDrivers"),
   modeComparison: document.querySelector("#modeComparison"),
@@ -717,7 +718,11 @@ function renderInsights(stats) {
   els.insightPenaltyDays.textContent = penaltyDays;
 
   renderScoreTrend(rows.slice(-14));
+  renderWeeklyScoreTrend(rows);
   renderHabitConsistency(rows);
+  renderScoreDrivers(rows);
+  renderModeComparison(rows);
+  renderRelationshipInsights(rows);
   renderInsightNotes(rows, stats, averageScore, averageStudy);
 }
 
@@ -731,6 +736,37 @@ function renderScoreTrend(rows) {
     <article class="score-bar" title="${formatShortDate(row.date)}: ${row.computed.dailyScore}">
       <div style="height: ${Math.max(row.computed.dailyScore, 4)}%"></div>
       <span>${formatShortDate(row.date)}</span>
+    </article>
+  `).join("");
+}
+
+function renderWeeklyScoreTrend(rows) {
+  if (rows.length === 0) {
+    els.weeklyScoreTrend.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+    return;
+  }
+
+  const weeks = new Map();
+  for (const row of rows) {
+    const week = weekStart(row.date);
+    const current = weeks.get(week) || { week, scores: [] };
+    current.scores.push(row.computed.dailyScore);
+    weeks.set(week, current);
+  }
+
+  const weekRows = [...weeks.values()]
+    .map(item => ({
+      week: item.week,
+      average: Math.round(item.scores.reduce((sum, score) => sum + score, 0) / item.scores.length),
+      days: item.scores.length,
+    }))
+    .slice(-8);
+
+  els.weeklyScoreTrend.innerHTML = weekRows.map(row => `
+    <article class="weekly-score-bar" title="Week of ${formatShortDate(row.week)}: ${row.average}">
+      <div style="height: ${Math.max(row.average, 4)}%"></div>
+      <span>${formatShortDate(row.week)}</span>
+      <strong>${row.average}</strong>
     </article>
   `).join("");
 }
@@ -772,6 +808,150 @@ function renderHabitConsistency(rows) {
   }).join("");
 }
 
+function renderScoreDrivers(rows) {
+  if (rows.length === 0) {
+    els.scoreDrivers.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+    return;
+  }
+
+  const losses = new Map();
+  for (const row of rows) {
+    const weight = 100 / row.computed.scoreItems.length;
+    for (const item of row.computed.scoreItems) {
+      const current = losses.get(item.label) || { label: item.label, lost: 0, count: 0 };
+      current.lost += (1 - item.value) * weight;
+      current.count += 1;
+      losses.set(item.label, current);
+    }
+    if (row.day.masturbating) {
+      const current = losses.get("Masturbating penalty") || { label: "Masturbating penalty", lost: 0, count: 0 };
+      current.lost += 10;
+      current.count += 1;
+      losses.set("Masturbating penalty", current);
+    }
+  }
+
+  const drivers = [...losses.values()]
+    .map(item => ({ ...item, averageLoss: item.lost / rows.length }))
+    .sort((a, b) => b.averageLoss - a.averageLoss);
+  const worst = drivers.slice(0, 5);
+  const best = drivers.filter(item => item.averageLoss === 0).slice(0, 3);
+
+  els.scoreDrivers.innerHTML = `
+    <div class="mini-section">
+      <strong>Biggest score losses</strong>
+      ${worst.map(item => insightListRow(item.label, `${formatNumber(item.averageLoss)} pts/day`, Math.min(item.averageLoss * 4, 100))).join("")}
+    </div>
+    <div class="mini-section">
+      <strong>Most stable</strong>
+      ${best.length
+        ? best.map(item => insightListRow(item.label, "0 pts lost", 100)).join("")
+        : `<p class="empty-insight">No habit was perfect across this window.</p>`}
+    </div>
+  `;
+}
+
+function renderModeComparison(rows) {
+  const modes = ["semester", "break"].map(mode => {
+    const modeRows = rows.filter(row => row.computed.mode === mode);
+    const count = modeRows.length;
+    const averageScore = average(modeRows.map(row => row.computed.dailyScore));
+    const streakRate = percentOf(modeRows, row => row.computed.lifeOk);
+    const sleepRate = percentOf(modeRows, row => row.computed.sleepOk);
+    const avoidanceRate = percentOf(modeRows, row => row.day.noSocialMedia && row.day.noPorn && !row.day.masturbating);
+    const penaltyDays = modeRows.filter(row => row.day.masturbating).length;
+    return { mode, count, averageScore, streakRate, sleepRate, avoidanceRate, penaltyDays };
+  });
+
+  if (rows.length === 0) {
+    els.modeComparison.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+    return;
+  }
+
+  els.modeComparison.innerHTML = modes.map(item => `
+    <article class="mode-card">
+      <strong>${item.mode === "semester" ? "Semester" : "Break"}</strong>
+      <span>${item.count} day${item.count === 1 ? "" : "s"}</span>
+      <dl>
+        <div><dt>Avg score</dt><dd>${item.averageScore === null ? "n/a" : Math.round(item.averageScore)}</dd></div>
+        <div><dt>80+ days</dt><dd>${item.streakRate === null ? "n/a" : `${item.streakRate}%`}</dd></div>
+        <div><dt>Sleep ok</dt><dd>${item.sleepRate === null ? "n/a" : `${item.sleepRate}%`}</dd></div>
+        <div><dt>Clean avoid</dt><dd>${item.avoidanceRate === null ? "n/a" : `${item.avoidanceRate}%`}</dd></div>
+        <div><dt>Penalty</dt><dd>${item.penaltyDays}</dd></div>
+      </dl>
+    </article>
+  `).join("");
+}
+
+function renderRelationshipInsights(rows) {
+  if (rows.length === 0) {
+    els.relationshipInsights.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+    return;
+  }
+
+  const sleepKnown = rows.filter(row => row.day.bedtime && row.day.wakeTime);
+  const sleepOkRows = sleepKnown.filter(row => row.computed.sleepOk);
+  const sleepMissRows = sleepKnown.filter(row => !row.computed.sleepOk);
+  const sleepOkScore = average(sleepOkRows.map(row => scoreWithoutGroups(row, ["sleep"])));
+  const sleepMissScore = average(sleepMissRows.map(row => scoreWithoutGroups(row, ["sleep"])));
+
+  const studyKnown = rows.filter(row => row.computed.mode === "semester" && Number.isFinite(Number.parseFloat(row.day.studyHours)));
+  const studyOkRows = studyKnown.filter(row => row.computed.studyOk);
+  const studyMissRows = studyKnown.filter(row => !row.computed.studyOk);
+  const studyOkScore = average(studyOkRows.map(row => scoreWithoutGroups(row, ["study"])));
+  const studyMissScore = average(studyMissRows.map(row => scoreWithoutGroups(row, ["study"])));
+
+  els.relationshipInsights.innerHTML = [
+    relationshipCard(
+      "Sleep vs score",
+      "Compares days after removing sleep points from the score.",
+      sleepOkRows.length,
+      sleepMissRows.length,
+      sleepOkScore,
+      sleepMissScore,
+      "8h+ sleep",
+      "missed sleep",
+    ),
+    relationshipCard(
+      "Study vs score",
+      "Compares semester days after removing study points from the score.",
+      studyOkRows.length,
+      studyMissRows.length,
+      studyOkScore,
+      studyMissScore,
+      "7h+ study",
+      "below 7h",
+    ),
+  ].join("");
+}
+
+function relationshipCard(title, detail, goodCount, missCount, goodScore, missScore, goodLabel, missLabel) {
+  const diff = goodScore === null || missScore === null ? null : Math.round(goodScore - missScore);
+  return `
+    <article class="relationship-card">
+      <div>
+        <strong>${title}</strong>
+        <span>${detail}</span>
+      </div>
+      <div class="relationship-values">
+        <p><span>${goodLabel}</span><strong>${goodScore === null ? "n/a" : Math.round(goodScore)}</strong><small>${goodCount}d</small></p>
+        <p><span>${missLabel}</span><strong>${missScore === null ? "n/a" : Math.round(missScore)}</strong><small>${missCount}d</small></p>
+        <p><span>Difference</span><strong>${diff === null ? "n/a" : `${diff > 0 ? "+" : ""}${diff}`}</strong><small>pts</small></p>
+      </div>
+    </article>
+  `;
+}
+
+function insightListRow(label, value, width) {
+  return `
+    <article class="insight-list-row">
+      <span>${label}</span>
+      <div><div style="width: ${Math.max(4, width)}%"></div></div>
+      <strong>${value}</strong>
+    </article>
+  `;
+}
+
 function renderInsightNotes(rows, stats, averageScore, averageStudy) {
   const notes = [];
   if (rows.length === 0) {
@@ -808,6 +988,22 @@ function longestCleanStreak(rows, isClean) {
     best = Math.max(best, current);
   }
   return best;
+}
+
+function scoreWithoutGroups(row, excludedGroups) {
+  const items = row.computed.scoreItems.filter(item => !excludedGroups.includes(item.group));
+  if (items.length === 0) return null;
+  const completed = items.reduce((sum, item) => sum + item.value, 0);
+  return Math.max(0, Math.round((completed / items.length) * 100) - row.computed.penalty);
+}
+
+function average(values) {
+  const usable = values.filter(Number.isFinite);
+  return usable.length ? usable.reduce((sum, value) => sum + value, 0) / usable.length : null;
+}
+
+function percentOf(rows, predicate) {
+  return rows.length ? Math.round((rows.filter(predicate).length / rows.length) * 100) : null;
 }
 
 function insightHabitRates(rows) {
@@ -969,6 +1165,13 @@ function daysBetween(start, end) {
   const startDateValue = new Date(`${start}T12:00:00`);
   const endDateValue = new Date(`${end}T12:00:00`);
   return Math.round((endDateValue - startDateValue) / 86400000);
+}
+
+function weekStart(iso) {
+  const date = new Date(`${iso}T12:00:00`);
+  const day = date.getDay() || 7;
+  date.setDate(date.getDate() - day + 1);
+  return toIsoDate(date);
 }
 
 function maxDate(a, b) {
