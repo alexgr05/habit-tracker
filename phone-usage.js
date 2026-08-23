@@ -4,6 +4,8 @@
   const panel = document.querySelector("#phoneUsageInsights");
   if (!panel) return;
 
+  injectPhoneUsageStyles();
+
   const emptyPhoneUsage = {
     totalScreenMinutes: null,
     socialMinutes: null,
@@ -98,5 +100,46 @@
     if (hours === 0) return `${mins}m`;
     if (mins === 0) return `${hours}h`;
     return `${hours}h ${mins}m`;
+  }
+
+  function injectPhoneUsageStyles() {
+    if (document.querySelector("#phoneUsageStyles")) return;
+    const style = document.createElement("style");
+    style.id = "phoneUsageStyles";
+    style.textContent = `
+      .phone-usage-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        min-width: 0;
+      }
+      .phone-usage-card {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+      }
+      .phone-usage-card span,
+      .phone-usage-card small {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .phone-usage-card strong {
+        color: var(--amber);
+        font-size: 24px;
+        line-height: 1;
+      }
+      @media (max-width: 540px) {
+        .phone-usage-grid {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
   }
 })();
