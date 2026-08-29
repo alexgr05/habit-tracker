@@ -784,7 +784,8 @@ h3 {
 
 .insight-list,
 .mode-comparison,
-.relationship-grid {
+.relationship-grid,
+.phone-usage-grid {
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -841,7 +842,8 @@ h3 {
 }
 
 .mode-card,
-.relationship-card {
+.relationship-card,
+.phone-usage-card {
   min-width: 0;
   padding: 11px;
   border: 1px solid var(--line);
@@ -850,13 +852,16 @@ h3 {
 }
 
 .mode-card > strong,
-.relationship-card strong {
+.relationship-card strong,
+.phone-usage-card strong {
   color: var(--ink);
 }
 
 .mode-card > span,
 .relationship-card span,
-.relationship-card small {
+.relationship-card small,
+.phone-usage-card span,
+.phone-usage-card small {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
@@ -897,9 +902,24 @@ h3 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.phone-usage-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .relationship-card {
   display: grid;
   gap: 11px;
+}
+
+.phone-usage-card {
+  display: grid;
+  gap: 6px;
+}
+
+.phone-usage-card strong {
+  color: var(--amber);
+  font-size: 24px;
+  line-height: 1;
 }
 
 .relationship-card > div:first-child {
@@ -1194,7 +1214,8 @@ tr:last-child td {
   .insight-stat-grid,
   .insight-grid,
   .mode-comparison,
-  .relationship-grid {
+  .relationship-grid,
+  .phone-usage-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }

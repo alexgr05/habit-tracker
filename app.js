@@ -8,6 +8,11 @@ const noPornStreakAnchorDays = 39;
 const historyDays = 14;
 const cloudReady = Boolean(window.supabase && supabaseUrl && supabaseKey);
 const supabaseClient = cloudReady ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+const emptyPhoneUsage = {
+  totalScreenMinutes: null,
+  socialMinutes: null,
+  lateNightMinutes: null,
+};
 const themes = ["dark", "light", "calm"];
 const themeLabels = {
   dark: "Dark",
@@ -45,6 +50,7 @@ let state = loadState();
 let activeDate = isoToday();
 let theme = loadTheme();
 let currentUser = null;
+let phoneUsageByDate = {};
 let cloudHydrated = false;
 let saveTimer = null;
 let syncInProgress = false;
@@ -93,6 +99,7 @@ const els = {
   scoreDrivers: document.querySelector("#scoreDrivers"),
   modeComparison: document.querySelector("#modeComparison"),
   relationshipInsights: document.querySelector("#relationshipInsights"),
+  phoneUsageInsights: document.querySelector("#phoneUsageInsights"),
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
   sportsTile: document.querySelector("#sportsTile"),
@@ -254,6 +261,7 @@ async function handleSession(session) {
   if (currentUser) {
     setSyncStatus("Loading cloud", true, "saving");
     await loadCloudDays();
+    await loadPhoneUsageDays();
     await syncAllLocalDays();
     cloudHydrated = true;
     if (!navigator.onLine) {
@@ -403,6 +411,28 @@ async function loadCloudDays() {
     state.days[row.date] = { ...defaultDay(row.data?.mode), ...row.data };
   }
   localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+async function loadPhoneUsageDays() {
+  if (!currentUser) return;
+  const { data, error } = await supabaseClient
+    .from("phone_usage_days")
+    .select("date,total_screen_minutes,social_minutes,late_night_minutes")
+    .order("date", { ascending: true });
+
+  if (error) {
+    phoneUsageByDate = {};
+    return;
+  }
+
+  phoneUsageByDate = Object.fromEntries((data || []).map(row => [
+    row.date,
+    {
+      totalScreenMinutes: row.total_screen_minutes,
+      socialMinutes: row.social_minutes,
+      lateNightMinutes: row.late_night_minutes,
+    },
+  ]));
 }
 
 async function syncAllLocalDays() {
@@ -696,7 +726,8 @@ function renderInsights(stats) {
   const rows = days.map(date => {
     const day = ensureDay(date);
     const computed = computeDay(date);
-    return { date, day, computed };
+    const phone = phoneUsageByDate[date] || emptyPhoneUsage;
+    return { date, day, computed, phone };
   });
 
   const trackedCount = rows.length;
@@ -723,6 +754,7 @@ function renderInsights(stats) {
   renderHabitConsistency(rows);
   renderScoreDrivers(rows);
   renderModeComparison(rows);
+  renderPhoneUsageInsights(rows);
   renderRelationshipInsights(rows);
   renderInsightNotes(rows, stats, averageScore, averageStudy);
 }
@@ -884,60 +916,111 @@ function renderModeComparison(rows) {
   `).join("");
 }
 
+function renderPhoneUsageInsights(rows) {
+  const phoneRows = rows.filter(row => hasPhoneUsage(row.phone));
+  if (phoneRows.length === 0) {
+    els.phoneUsageInsights.innerHTML = `<p class="empty-insight">No Android phone usage data yet.</p>`;
+    return;
+  }
+
+  const latest = [...phoneRows].reverse()[0];
+  const avgTotal = average(phoneRows.map(row => row.phone.totalScreenMinutes).filter(Number.isFinite));
+  const avgSocial = average(phoneRows.map(row => row.phone.socialMinutes).filter(Number.isFinite));
+  const avgLate = average(phoneRows.map(row => row.phone.lateNightMinutes).filter(Number.isFinite));
+
+  els.phoneUsageInsights.innerHTML = [
+    phoneUsageCard("Latest total", formatMinutes(latest.phone.totalScreenMinutes), formatShortDate(latest.date)),
+    phoneUsageCard("Avg total", formatMinutes(avgTotal), `${phoneRows.length}d`),
+    phoneUsageCard("Avg social", formatMinutes(avgSocial), "tracked days"),
+    phoneUsageCard("Avg late night", formatMinutes(avgLate), "after 00:00"),
+  ].join("");
+}
+
+function phoneUsageCard(label, value, detail) {
+  return `
+    <article class="phone-usage-card">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      <small>${detail}</small>
+    </article>
+  `;
+}
+
+function hasPhoneUsage(phone) {
+  return [phone.totalScreenMinutes, phone.socialMinutes, phone.lateNightMinutes].some(Number.isFinite);
+}
+
 function renderRelationshipInsights(rows) {
   if (rows.length === 0) {
     els.relationshipInsights.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
     return;
   }
 
-  const sleepKnown = rows.filter(row => row.day.bedtime && row.day.wakeTime);
-  const sleepOkRows = sleepKnown.filter(row => row.computed.sleepOk);
-  const sleepMissRows = sleepKnown.filter(row => !row.computed.sleepOk);
-  const sleepOkScore = average(sleepOkRows.map(row => scoreWithoutGroups(row, ["sleep"])));
-  const sleepMissScore = average(sleepMissRows.map(row => scoreWithoutGroups(row, ["sleep"])));
+  const drivers = relationshipHabitDefinitions()
+    .map(habit => relationshipDriver(rows, habit))
+    .filter(Boolean)
+    .sort((a, b) => b.difference - a.difference)
+    .slice(0, 3);
 
-  const studyKnown = rows.filter(row => row.computed.mode === "semester" && Number.isFinite(Number.parseFloat(row.day.studyHours)));
-  const studyOkRows = studyKnown.filter(row => row.computed.studyOk);
-  const studyMissRows = studyKnown.filter(row => !row.computed.studyOk);
-  const studyOkScore = average(studyOkRows.map(row => scoreWithoutGroups(row, ["study"])));
-  const studyMissScore = average(studyMissRows.map(row => scoreWithoutGroups(row, ["study"])));
+  if (drivers.length === 0) {
+    els.relationshipInsights.innerHTML = `<p class="empty-insight">Track fulfilled and missed days for habits to see score drivers.</p>`;
+    return;
+  }
 
-  els.relationshipInsights.innerHTML = [
-    relationshipCard(
-      "Sleep vs score",
-      "Compares days after removing sleep points from the score.",
-      sleepOkRows.length,
-      sleepMissRows.length,
-      sleepOkScore,
-      sleepMissScore,
-      "8h+ sleep",
-      "missed sleep",
-    ),
-    relationshipCard(
-      "Study vs score",
-      "Compares semester days after removing study points from the score.",
-      studyOkRows.length,
-      studyMissRows.length,
-      studyOkScore,
-      studyMissScore,
-      "7h+ study",
-      "below 7h",
-    ),
-  ].join("");
+  els.relationshipInsights.innerHTML = drivers.map(relationshipDriverCard).join("");
 }
 
-function relationshipCard(title, detail, goodCount, missCount, goodScore, missScore, goodLabel, missLabel) {
-  const diff = goodScore === null || missScore === null ? null : Math.round(goodScore - missScore);
+function relationshipHabitDefinitions() {
+  return [
+    { label: "Supplements", fulfilled: row => row.day.supplements },
+    { label: "Floss", fulfilled: row => row.day.floss },
+    { label: "Leg Exercise", fulfilled: row => row.day.legExercise },
+    { label: "Mental Routine", fulfilled: row => row.day.mentalRoutine },
+    { label: "Study Hours", fulfilled: row => row.computed.studyOk, available: row => row.computed.mode === "semester" },
+    { label: "Sports", fulfilled: row => row.day.sports, available: row => row.computed.mode === "break" },
+    { label: "4th Meal", fulfilled: row => row.day.fourthMeal, available: row => row.computed.mode === "break" },
+    { label: "Back Stretching", fulfilled: row => row.day.backStretching, available: row => row.computed.mode === "break" },
+    { label: "Before 00", fulfilled: row => row.computed.asleepOk, available: row => row.day.bedtime },
+    { label: "Wake 8:30", fulfilled: row => row.computed.wakeOk, available: row => row.day.wakeTime },
+    { label: "8h Sleep", fulfilled: row => row.computed.sleepOk, available: row => row.day.bedtime && row.day.wakeTime },
+    { label: "No Social Media", fulfilled: row => row.day.noSocialMedia },
+    { label: "No Porn", fulfilled: row => row.day.noPorn },
+    { label: "No Masturbating", fulfilled: row => !row.day.masturbating },
+  ];
+}
+
+function relationshipDriver(rows, habit) {
+  const availableRows = rows.filter(row => !habit.available || habit.available(row));
+  const fulfilledRows = availableRows.filter(row => habit.fulfilled(row));
+  const missedRows = availableRows.filter(row => !habit.fulfilled(row));
+  if (fulfilledRows.length === 0 || missedRows.length === 0) return null;
+
+  const fulfilledScore = average(fulfilledRows.map(row => row.computed.dailyScore));
+  const missedScore = average(missedRows.map(row => row.computed.dailyScore));
+  if (fulfilledScore === null || missedScore === null) return null;
+
+  return {
+    label: habit.label,
+    fulfilledCount: fulfilledRows.length,
+    missedCount: missedRows.length,
+    fulfilledScore,
+    missedScore,
+    difference: fulfilledScore - missedScore,
+  };
+}
+
+function relationshipDriverCard(driver) {
+  const diff = Math.round(driver.difference);
   return `
     <article class="relationship-card">
       <div>
-        <strong>${title}</strong>
-        <span>${detail}</span>
+        <strong>${driver.label}</strong>
+        <span>Average score difference on fulfilled vs missed days.</span>
       </div>
       <div class="relationship-values">
-        <p><span>${goodLabel}</span><strong>${goodScore === null ? "n/a" : Math.round(goodScore)}</strong><small>${goodCount}d</small></p>
-        <p><span>${missLabel}</span><strong>${missScore === null ? "n/a" : Math.round(missScore)}</strong><small>${missCount}d</small></p>
-        <p><span>Difference</span><strong>${diff === null ? "n/a" : `${diff > 0 ? "+" : ""}${diff}`}</strong><small>pts</small></p>
+        <p><span>Fulfilled</span><strong>${Math.round(driver.fulfilledScore)}</strong><small>${driver.fulfilledCount}d</small></p>
+        <p><span>Missed</span><strong>${Math.round(driver.missedScore)}</strong><small>${driver.missedCount}d</small></p>
+        <p><span>Difference</span><strong>${diff > 0 ? "+" : ""}${diff}</strong><small>pts</small></p>
       </div>
     </article>
   `;
@@ -1001,6 +1084,16 @@ function scoreWithoutGroups(row, excludedGroups) {
 function average(values) {
   const usable = values.filter(Number.isFinite);
   return usable.length ? usable.reduce((sum, value) => sum + value, 0) / usable.length : null;
+}
+
+function formatMinutes(minutes) {
+  if (!Number.isFinite(minutes)) return "n/a";
+  const rounded = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(rounded / 60);
+  const mins = rounded % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
 }
 
 function percentOf(rows, predicate) {
@@ -1197,6 +1290,13 @@ registerServiceWorker();
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js")
