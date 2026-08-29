@@ -1,4 +1,4 @@
-const cacheName = "habit-streak-pwa-v22";
+const cacheName = "habit-streak-pwa-v23";
 const appShell = [
   "/",
   "/index.html",
@@ -23,9 +23,10 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(key => key !== cacheName).map(key => caches.delete(key)))
-    )
+    ).then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: "window" }))
+      .then(clients => Promise.all(clients.map(client => client.navigate(client.url))))
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", event => {
