@@ -95,6 +95,8 @@ const els = {
   insightPenaltyDays: document.querySelector("#insightPenaltyDays"),
   scoreTrend: document.querySelector("#scoreTrend"),
   weeklyScoreTrend: document.querySelector("#weeklyScoreTrend"),
+  semesterConsistencyCard: document.querySelector("#semesterConsistencyCard"),
+  breakConsistencyCard: document.querySelector("#breakConsistencyCard"),
   semesterHabitConsistency: document.querySelector("#semesterHabitConsistency"),
   breakHabitConsistency: document.querySelector("#breakHabitConsistency"),
   scoreDrivers: document.querySelector("#scoreDrivers"),
@@ -611,7 +613,7 @@ function scoreStatus(score, lifeOk) {
   return "Open day";
 }
 
-function computeDay(date) {
+function computeDay(date, dynamicThreshold = true) {
   const day = ensureDay(date);
   const mode = day.mode || "semester";
   const studyHours = Number.parseFloat(day.studyHours);
@@ -662,7 +664,8 @@ function computeDay(date) {
   const completed = scoreItems.reduce((sum, item) => sum + item.value, 0);
   const penalty = day.masturbating ? 10 : 0;
   const dailyScore = Math.max(0, Math.round((completed / scoreItems.length) * 100) - penalty);
-  const lifeOk = dailyScore >= 80;
+  const lifeThreshold = dynamicThreshold ? lifeStreakThreshold(date) : 80;
+  const lifeOk = dailyScore > lifeThreshold;
 
   return {
     mode,
@@ -678,10 +681,21 @@ function computeDay(date) {
     raw,
     ok,
     lifeOk,
+    lifeThreshold,
     dailyScore,
     sleepHours,
     sleepHoursText: Number.isFinite(sleepHours) ? sleepHours.toFixed(1) : "",
   };
+}
+
+function lifeStreakThreshold(date) {
+  const previousScores = sortedDates()
+    .filter(dayDate => dayDate < date && state.days[dayDate] && hasTrackedData(state.days[dayDate]))
+    .slice(-10)
+    .map(dayDate => computeDay(dayDate, false).dailyScore);
+
+  if (previousScores.length === 0) return 80;
+  return Math.round(previousScores.reduce((sum, score) => sum + score, 0) / previousScores.length);
 }
 
 function computeStats() {
@@ -755,7 +769,7 @@ function renderInsights(stats) {
   renderScoreDrivers(rows);
   renderModeComparison(rows);
   renderPhoneUsageInsights(rows);
-  renderInsightNotes(rows, stats, averageScore, averageStudy);
+  renderInsightNotes(rows, stats, averageScore, averageStudy, computeDay(activeDate).lifeThreshold);
 }
 
 function renderScoreTrend(rows) {
@@ -864,6 +878,9 @@ function renderHabitConsistency(rows) {
     { label: "Back Stretch", value: row => row.day.backStretching },
     ...sharedHabits.slice(4),
   ];
+  const activeMode = computeDay(activeDate).mode;
+  els.semesterConsistencyCard.hidden = activeMode !== "semester";
+  els.breakConsistencyCard.hidden = activeMode !== "break";
 
   renderPhaseHabitConsistency(
     els.semesterHabitConsistency,
@@ -949,7 +966,7 @@ function renderModeComparison(rows) {
       <span>${item.count} day${item.count === 1 ? "" : "s"}</span>
       <dl>
         <div><dt>Avg score</dt><dd>${item.averageScore === null ? "n/a" : Math.round(item.averageScore)}</dd></div>
-        <div><dt>80+ days</dt><dd>${item.streakRate === null ? "n/a" : `${item.streakRate}%`}</dd></div>
+        <div><dt>Streak days</dt><dd>${item.streakRate === null ? "n/a" : `${item.streakRate}%`}</dd></div>
         <div><dt>Sleep ok</dt><dd>${item.sleepRate === null ? "n/a" : `${item.sleepRate}%`}</dd></div>
         <div><dt>Clean avoid</dt><dd>${item.avoidanceRate === null ? "n/a" : `${item.avoidanceRate}%`}</dd></div>
         <div><dt>Penalty</dt><dd>${item.penaltyDays}</dd></div>
@@ -1041,7 +1058,7 @@ function insightListRow(label, value, width, detail = "") {
   `;
 }
 
-function renderInsightNotes(rows, stats, averageScore, averageStudy) {
+function renderInsightNotes(rows, stats, averageScore, averageStudy, activeLifeThreshold) {
   const notes = [];
   if (rows.length === 0) {
     notes.push("No tracked days yet. Start logging and this area will become useful.");
@@ -1052,10 +1069,10 @@ function renderInsightNotes(rows, stats, averageScore, averageStudy) {
     notes.push(`Best recent day: ${formatShortDate(best.date)} with ${best.computed.dailyScore} points.`);
     notes.push(`Current life streak: ${stats.life.current} day${stats.life.current === 1 ? "" : "s"}.`);
     notes.push(`Weakest tracked area: ${weakest.label} at ${weakest.percent}%.`);
-    if (averageScore >= 80) {
-      notes.push("Your recent average is streak-level.");
+    if (averageScore > activeLifeThreshold) {
+      notes.push(`Your recent average is above the current streak target of ${activeLifeThreshold}.`);
     } else {
-      notes.push(`Recent average is ${Math.max(0, 80 - averageScore)} points below streak-level.`);
+      notes.push(`Recent average is ${Math.max(0, activeLifeThreshold - averageScore + 1)} points below the current streak target.`);
     }
     if (averageStudy > 0) {
       notes.push(`Average study on logged study days: ${formatNumber(averageStudy)} hours.`);
