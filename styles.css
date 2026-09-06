@@ -654,6 +654,7 @@ input:focus {
   align-items: start;
 }
 
+.consistency-stack,
 .trend-stack {
   display: grid;
   gap: 12px;

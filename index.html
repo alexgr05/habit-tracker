@@ -136,13 +136,23 @@
           </section>
 
           <section class="insight-focus-grid" aria-label="Charts">
-            <article class="chart-panel">
-              <div class="chart-head">
-                <h3>Habit Consistency</h3>
-                <span>All tracked days</span>
-              </div>
-              <div id="habitConsistency" class="habit-consistency"></div>
-            </article>
+            <div class="consistency-stack">
+              <article class="chart-panel">
+                <div class="chart-head">
+                  <h3>Semester Consistency</h3>
+                  <span>Semester days only</span>
+                </div>
+                <div id="semesterHabitConsistency" class="habit-consistency"></div>
+              </article>
+
+              <article class="chart-panel">
+                <div class="chart-head">
+                  <h3>Break Consistency</h3>
+                  <span>Break days only</span>
+                </div>
+                <div id="breakHabitConsistency" class="habit-consistency"></div>
+              </article>
+            </div>
 
             <div class="trend-stack">
               <article class="chart-panel">

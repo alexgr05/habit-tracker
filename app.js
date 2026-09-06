@@ -95,7 +95,8 @@ const els = {
   insightPenaltyDays: document.querySelector("#insightPenaltyDays"),
   scoreTrend: document.querySelector("#scoreTrend"),
   weeklyScoreTrend: document.querySelector("#weeklyScoreTrend"),
-  habitConsistency: document.querySelector("#habitConsistency"),
+  semesterHabitConsistency: document.querySelector("#semesterHabitConsistency"),
+  breakHabitConsistency: document.querySelector("#breakHabitConsistency"),
   scoreDrivers: document.querySelector("#scoreDrivers"),
   modeComparison: document.querySelector("#modeComparison"),
   phoneUsageInsights: document.querySelector("#phoneUsageInsights"),
@@ -839,37 +840,58 @@ function trendChart(points, options = {}) {
 }
 
 function renderHabitConsistency(rows) {
-  const habits = [
+  const sharedHabits = [
     { label: "Supplements", value: row => row.day.supplements },
     { label: "Floss", value: row => row.day.floss },
     { label: "Leg Exercise", value: row => row.day.legExercise },
     { label: "Mental", value: row => row.day.mentalRoutine },
-    { label: "Study 7h", value: row => row.computed.studyOk, available: row => row.computed.mode === "semester" },
-    { label: "Sports", value: row => row.day.sports, available: row => row.computed.mode === "break" },
-    { label: "4th Meal", value: row => row.day.fourthMeal, available: row => row.computed.mode === "break" },
-    { label: "Back Stretch", value: row => row.day.backStretching, available: row => row.computed.mode === "break" },
     { label: "Sleep 8h", value: row => row.computed.sleepOk },
     { label: "Before 00", value: row => row.computed.asleepOk },
     { label: "Wake 8:30", value: row => row.computed.wakeOk },
     { label: "No Social", value: row => row.day.noSocialMedia },
     { label: "No Porn", value: row => row.day.noPorn },
+    { label: "No Masturbating", value: row => !row.day.masturbating },
+  ];
+  const semesterHabits = [
+    ...sharedHabits.slice(0, 4),
+    { label: "Study 7h", value: row => row.computed.studyOk },
+    ...sharedHabits.slice(4),
+  ];
+  const breakHabits = [
+    ...sharedHabits.slice(0, 4),
+    { label: "Sports", value: row => row.day.sports },
+    { label: "4th Meal", value: row => row.day.fourthMeal },
+    { label: "Back Stretch", value: row => row.day.backStretching },
+    ...sharedHabits.slice(4),
   ];
 
+  renderPhaseHabitConsistency(
+    els.semesterHabitConsistency,
+    rows.filter(row => row.computed.mode === "semester"),
+    semesterHabits,
+    "No semester days tracked yet."
+  );
+  renderPhaseHabitConsistency(
+    els.breakHabitConsistency,
+    rows.filter(row => row.computed.mode === "break"),
+    breakHabits,
+    "No break days tracked yet."
+  );
+}
+
+function renderPhaseHabitConsistency(element, rows, habits, emptyMessage) {
   if (rows.length === 0) {
-    els.habitConsistency.innerHTML = `<p class="empty-insight">Track a few days to see patterns.</p>`;
+    element.innerHTML = `<p class="empty-insight">${emptyMessage}</p>`;
     return;
   }
 
-  els.habitConsistency.innerHTML = habits.map(habit => {
-    const availableRows = rows.filter(row => !habit.available || habit.available(row));
-    const percent = availableRows.length
-      ? Math.round((availableRows.filter(row => habit.value(row)).length / availableRows.length) * 100)
-      : null;
+  element.innerHTML = habits.map(habit => {
+    const percent = Math.round((rows.filter(row => habit.value(row)).length / rows.length) * 100);
     return `
       <article class="habit-row">
         <span>${habit.label}</span>
-        <div class="habit-meter"><div style="width: ${percent ?? 0}%"></div></div>
-        <strong>${percent === null ? "n/a" : `${percent}%`}</strong>
+        <div class="habit-meter"><div style="width: ${percent}%"></div></div>
+        <strong>${percent}%</strong>
       </article>
     `;
   }).join("");
