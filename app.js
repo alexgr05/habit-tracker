@@ -85,7 +85,6 @@ const els = {
   lifeThresholdMarker: document.querySelector("#lifeThresholdMarker"),
   scoreStatus: document.querySelector("#scoreStatus"),
   themeToggle: document.querySelector("#themeToggle"),
-  summaryRows: document.querySelector("#summaryRows"),
   historyRows: document.querySelector("#historyRows"),
   semesterMode: document.querySelector("#semesterMode"),
   breakMode: document.querySelector("#breakMode"),
@@ -101,7 +100,7 @@ const els = {
   semesterHabitConsistency: document.querySelector("#semesterHabitConsistency"),
   breakHabitConsistency: document.querySelector("#breakHabitConsistency"),
   scoreDrivers: document.querySelector("#scoreDrivers"),
-  modeComparison: document.querySelector("#modeComparison"),
+  sleepAverages: document.querySelector("#sleepAverages"),
   phoneUsageInsights: document.querySelector("#phoneUsageInsights"),
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
@@ -582,18 +581,6 @@ function render() {
   els.bestLife.textContent = stats.life.best;
   els.noPornTileStreak.textContent = `${noPornStreakAt(activeDate)}d`;
 
-  els.summaryRows.innerHTML = categories.map(category => {
-    const item = stats[category.key];
-    return `
-      <tr>
-        <td>${category.label}</td>
-        <td>${item.current}</td>
-        <td>${item.best}</td>
-        <td>${item.today}</td>
-      </tr>
-    `;
-  }).join("");
-
   els.historyRows.innerHTML = makeHistoryRows();
   renderInsights(stats);
 }
@@ -771,7 +758,7 @@ function renderInsights(stats) {
   renderWeeklyScoreTrend(rows);
   renderHabitConsistency(rows);
   renderScoreDrivers(rows);
-  renderModeComparison(rows);
+  renderSleepAverages(rows);
   renderPhoneUsageInsights(rows);
   renderInsightNotes(rows, stats, averageScore, averageStudy, computeDay(activeDate).lifeThreshold);
 }
@@ -947,36 +934,34 @@ function renderScoreDrivers(rows) {
   }).join("");
 }
 
-function renderModeComparison(rows) {
-  const modes = ["semester", "break"].map(mode => {
-    const modeRows = rows.filter(row => row.computed.mode === mode);
-    const count = modeRows.length;
-    const averageScore = average(modeRows.map(row => row.computed.dailyScore));
-    const streakRate = percentOf(modeRows, row => row.computed.lifeOk);
-    const sleepRate = percentOf(modeRows, row => row.computed.sleepOk);
-    const avoidanceRate = percentOf(modeRows, row => row.day.noSocialMedia && row.day.noPorn && !row.day.masturbating);
-    const penaltyDays = modeRows.filter(row => row.day.masturbating).length;
-    return { mode, count, averageScore, streakRate, sleepRate, avoidanceRate, penaltyDays };
-  });
+function renderSleepAverages(rows) {
+  const bedtimeAverage = averageClockTime(
+    rows.map(row => row.day.bedtime).filter(Boolean),
+    true
+  );
+  const wakeAverage = averageClockTime(rows.map(row => row.day.wakeTime).filter(Boolean));
+  const sleepAverage = average(rows.map(row => row.computed.sleepHours).filter(Number.isFinite));
 
-  if (rows.length === 0) {
-    els.modeComparison.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
+  if (bedtimeAverage === null && wakeAverage === null && sleepAverage === null) {
+    els.sleepAverages.innerHTML = `<p class="empty-insight">No sleep data tracked yet.</p>`;
     return;
   }
 
-  els.modeComparison.innerHTML = modes.map(item => `
-    <article class="mode-card">
-      <strong>${item.mode === "semester" ? "Semester" : "Break"}</strong>
-      <span>${item.count} day${item.count === 1 ? "" : "s"}</span>
-      <dl>
-        <div><dt>Avg score</dt><dd>${item.averageScore === null ? "n/a" : Math.round(item.averageScore)}</dd></div>
-        <div><dt>Streak days</dt><dd>${item.streakRate === null ? "n/a" : `${item.streakRate}%`}</dd></div>
-        <div><dt>Sleep ok</dt><dd>${item.sleepRate === null ? "n/a" : `${item.sleepRate}%`}</dd></div>
-        <div><dt>Clean avoid</dt><dd>${item.avoidanceRate === null ? "n/a" : `${item.avoidanceRate}%`}</dd></div>
-        <div><dt>Penalty</dt><dd>${item.penaltyDays}</dd></div>
-      </dl>
+  els.sleepAverages.innerHTML = [
+    sleepAverageCard("Bedtime", formatClockMinutes(bedtimeAverage), "average"),
+    sleepAverageCard("Wake Time", formatClockMinutes(wakeAverage), "average"),
+    sleepAverageCard("Sleep Time", sleepAverage === null ? "n/a" : `${formatNumber(sleepAverage)}h`, "average"),
+  ].join("");
+}
+
+function sleepAverageCard(label, value, detail) {
+  return `
+    <article class="sleep-average-card">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      <small>${detail}</small>
     </article>
-  `).join("");
+  `;
 }
 
 function renderPhoneUsageInsights(rows) {
@@ -1110,6 +1095,24 @@ function scoreWithoutGroups(row, excludedGroups) {
 function average(values) {
   const usable = values.filter(Number.isFinite);
   return usable.length ? usable.reduce((sum, value) => sum + value, 0) / usable.length : null;
+}
+
+function averageClockTime(values, wrapsMidnight = false) {
+  const minutes = values
+    .map(minutesFromTime)
+    .filter(value => value !== null)
+    .map(value => wrapsMidnight && value < 12 * 60 ? value + 24 * 60 : value);
+  if (minutes.length === 0) return null;
+  const averageMinutes = Math.round(minutes.reduce((sum, value) => sum + value, 0) / minutes.length);
+  return averageMinutes % (24 * 60);
+}
+
+function formatClockMinutes(minutes) {
+  if (!Number.isFinite(minutes)) return "n/a";
+  const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const hours = String(Math.floor(normalized / 60)).padStart(2, "0");
+  const mins = String(normalized % 60).padStart(2, "0");
+  return `${hours}:${mins}`;
 }
 
 function formatMinutes(minutes) {
