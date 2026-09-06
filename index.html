@@ -88,11 +88,16 @@
                 <p class="eyebrow">Flame</p>
                 <h2>Daily Score</h2>
               </div>
-              <strong id="todayScore">0</strong>
+              <div class="score-total" aria-label="Today score">
+                <strong id="todayScore">0</strong>
+                <span>/ 100</span>
+              </div>
             </div>
-            <div class="flame-meter" aria-hidden="true">
+            <div class="flame-meter" aria-label="Daily score progress">
               <div id="scoreFill"></div>
+              <span id="lifeThresholdMarker" class="life-threshold-marker" style="left: 80%"></span>
             </div>
+            <p id="scoreBreakdown" class="score-breakdown">0 / 100 points</p>
             <p id="scoreStatus" class="flame-status">Open day</p>
           </section>
 

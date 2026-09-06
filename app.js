@@ -82,6 +82,8 @@ const els = {
   lifeStreak: document.querySelector("#lifeStreak"),
   bestLife: document.querySelector("#bestLife"),
   scoreFill: document.querySelector("#scoreFill"),
+  lifeThresholdMarker: document.querySelector("#lifeThresholdMarker"),
+  scoreBreakdown: document.querySelector("#scoreBreakdown"),
   scoreStatus: document.querySelector("#scoreStatus"),
   themeToggle: document.querySelector("#themeToggle"),
   summaryRows: document.querySelector("#summaryRows"),
@@ -573,7 +575,11 @@ function render() {
 
   els.todayScore.textContent = computed.dailyScore;
   els.scoreFill.style.width = `${computed.dailyScore}%`;
-  els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk);
+  els.lifeThresholdMarker.style.left = `${Math.max(0, Math.min(computed.lifeThreshold, 100))}%`;
+  els.lifeThresholdMarker.title = `Life streak target: above ${computed.lifeThreshold}`;
+  els.lifeThresholdMarker.setAttribute("aria-label", `Life streak target: above ${computed.lifeThreshold}`);
+  els.scoreBreakdown.textContent = `${computed.dailyScore} / 100 points. Streak target: > ${computed.lifeThreshold}`;
+  els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk, computed.lifeThreshold);
   els.lifeStreak.textContent = stats.life.current;
   els.bestLife.textContent = stats.life.best;
   els.noPornTileStreak.textContent = `${noPornStreakAt(activeDate)}d`;
@@ -605,10 +611,10 @@ function yesNo(value) {
   return value ? "Yes" : "No";
 }
 
-function scoreStatus(score, lifeOk) {
+function scoreStatus(score, lifeOk, threshold) {
   if (score === 100) return "Perfect day burning";
-  if (lifeOk) return "Streak burning";
-  if (score >= 70) return "Strong partial";
+  if (lifeOk) return `Streak burning. Target > ${threshold}`;
+  if (score >= 70) return `Strong partial. Target > ${threshold}`;
   if (score >= 40) return "Still in motion";
   return "Open day";
 }

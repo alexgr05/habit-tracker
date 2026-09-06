@@ -549,20 +549,33 @@ input:focus {
   gap: 14px;
 }
 
-.flame-topline strong {
+.score-total {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.score-total strong {
   color: var(--amber);
   font-size: 48px;
   line-height: 0.92;
   text-shadow: 0 0 28px rgba(245, 158, 11, 0.25);
 }
 
+.score-total span {
+  font-size: 18px;
+}
+
 .flame-meter {
+  position: relative;
   height: 14px;
   margin: 18px 0 11px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--bg);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .flame-meter div {
@@ -572,6 +585,37 @@ input:focus {
   background: linear-gradient(90deg, #f97316, #f59e0b, #fde047);
   box-shadow: 0 0 24px rgba(245, 158, 11, 0.42);
   transition: width 180ms ease;
+}
+
+.life-threshold-marker {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 14px rgba(255, 255, 255, 0.42);
+  transform: translate(-50%, -50%);
+}
+
+.life-threshold-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--amber);
+  transform: translateX(-50%);
+}
+
+.score-breakdown {
+  margin: -2px 0 9px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .flame-status {
@@ -1252,7 +1296,7 @@ tr:last-child td {
     padding: 10px 11px;
   }
 
-  .flame-topline strong {
+  .score-total strong {
     font-size: 44px;
   }
 
