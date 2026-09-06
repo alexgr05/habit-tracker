@@ -13,11 +13,11 @@ const emptyPhoneUsage = {
   socialMinutes: null,
   lateNightMinutes: null,
 };
-const themes = ["dark", "light", "calm"];
+const themes = ["calm", "dark", "light"];
 const themeLabels = {
   dark: "Dark",
   light: "Light",
-  calm: "Calm Heat",
+  calm: "Calm Heat 2.0",
 };
 
 const categories = [
@@ -192,7 +192,7 @@ function loadState() {
 
 function loadTheme() {
   const saved = localStorage.getItem(themeKey);
-  return themes.includes(saved) ? saved : "dark";
+  return themes.includes(saved) ? saved : "calm";
 }
 
 function applyTheme() {
