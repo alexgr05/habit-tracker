@@ -1,4 +1,4 @@
-const cacheName = "habit-streak-pwa-v28";
+const cacheName = "habit-streak-pwa-v29";
 const appShell = [
   "./",
   "index.html",

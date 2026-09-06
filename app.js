@@ -83,7 +83,6 @@ const els = {
   bestLife: document.querySelector("#bestLife"),
   scoreFill: document.querySelector("#scoreFill"),
   lifeThresholdMarker: document.querySelector("#lifeThresholdMarker"),
-  scoreBreakdown: document.querySelector("#scoreBreakdown"),
   scoreStatus: document.querySelector("#scoreStatus"),
   themeToggle: document.querySelector("#themeToggle"),
   summaryRows: document.querySelector("#summaryRows"),
@@ -578,7 +577,6 @@ function render() {
   els.lifeThresholdMarker.style.left = `${Math.max(0, Math.min(computed.lifeThreshold, 100))}%`;
   els.lifeThresholdMarker.title = `Life streak target: above ${computed.lifeThreshold}`;
   els.lifeThresholdMarker.setAttribute("aria-label", `Life streak target: above ${computed.lifeThreshold}`);
-  els.scoreBreakdown.textContent = `${computed.dailyScore} / 100 points. Streak target: > ${computed.lifeThreshold}`;
   els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk, computed.lifeThreshold);
   els.lifeStreak.textContent = stats.life.current;
   els.bestLife.textContent = stats.life.best;
