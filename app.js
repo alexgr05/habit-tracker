@@ -58,7 +58,6 @@ let passwordRecoveryMode = false;
 const pendingSaveDates = new Set();
 
 const els = {
-  todayLine: document.querySelector("#todayLine"),
   appViews: document.querySelectorAll(".app-view"),
   viewNavButtons: document.querySelectorAll(".view-nav-button"),
   todayScore: document.querySelector("#todayScore"),
@@ -546,7 +545,6 @@ function render() {
   const breakMode = computed.mode === "break";
 
   els.activeDate.value = activeDate;
-  els.todayLine.textContent = `${formatDayName(activeDate)} - ${formatShortDate(activeDate)}`;
   els.studyHours.value = day.studyHours;
   els.bedtime.value = day.bedtime;
   els.wakeTime.value = day.wakeTime;

@@ -272,6 +272,7 @@ button:hover {
 .panel-controls {
   display: grid;
   gap: 8px;
+  width: 100%;
   justify-items: end;
 }
 
