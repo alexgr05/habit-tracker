@@ -98,7 +98,6 @@ const els = {
   habitConsistency: document.querySelector("#habitConsistency"),
   scoreDrivers: document.querySelector("#scoreDrivers"),
   modeComparison: document.querySelector("#modeComparison"),
-  relationshipInsights: document.querySelector("#relationshipInsights"),
   phoneUsageInsights: document.querySelector("#phoneUsageInsights"),
   insightNotes: document.querySelector("#insightNotes"),
   activeDate: document.querySelector("#activeDate"),
@@ -755,7 +754,6 @@ function renderInsights(stats) {
   renderScoreDrivers(rows);
   renderModeComparison(rows);
   renderPhoneUsageInsights(rows);
-  renderRelationshipInsights(rows);
   renderInsightNotes(rows, stats, averageScore, averageStudy);
 }
 
@@ -765,12 +763,14 @@ function renderScoreTrend(rows) {
     return;
   }
 
-  els.scoreTrend.innerHTML = rows.map(row => `
-    <article class="score-bar" title="${formatShortDate(row.date)}: ${row.computed.dailyScore}">
-      <div style="height: ${Math.max(row.computed.dailyScore, 4)}%"></div>
-      <span>${formatShortDate(row.date)}</span>
-    </article>
-  `).join("");
+  els.scoreTrend.innerHTML = trendChart(
+    rows.map(row => ({
+      label: formatShortDate(row.date),
+      value: row.computed.dailyScore,
+      title: `${formatShortDate(row.date)}: ${row.computed.dailyScore}`,
+    })),
+    { averageWindow: 10, showValue: false }
+  );
 }
 
 function renderWeeklyScoreTrend(rows) {
@@ -795,13 +795,47 @@ function renderWeeklyScoreTrend(rows) {
     }))
     .slice(-8);
 
-  els.weeklyScoreTrend.innerHTML = weekRows.map(row => `
-    <article class="weekly-score-bar" title="Week of ${formatShortDate(row.week)}: ${row.average}">
-      <div style="height: ${Math.max(row.average, 4)}%"></div>
-      <span>${formatShortDate(row.week)}</span>
-      <strong>${row.average}</strong>
-    </article>
-  `).join("");
+  els.weeklyScoreTrend.innerHTML = trendChart(
+    weekRows.map(row => ({
+      label: formatShortDate(row.week),
+      value: row.average,
+      title: `Week of ${formatShortDate(row.week)}: ${row.average}`,
+    })),
+    { averageWindow: 1, showValue: true }
+  );
+}
+
+function trendChart(points, options = {}) {
+  const averageWindow = options.averageWindow || 1;
+  const movingAverage = points.map((point, index) => {
+    const windowPoints = points.slice(Math.max(0, index - averageWindow + 1), index + 1);
+    return Math.round(windowPoints.reduce((sum, item) => sum + item.value, 0) / windowPoints.length);
+  });
+  const trendDelta = movingAverage.length > 1 ? movingAverage[movingAverage.length - 1] - movingAverage[0] : 0;
+  const svgPoints = movingAverage.map((value, index) => {
+    const x = movingAverage.length === 1 ? 50 : (index / (movingAverage.length - 1)) * 100;
+    const y = 100 - Math.max(0, Math.min(value, 100));
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  const trendLabel = trendDelta > 0 ? `+${trendDelta}` : `${trendDelta}`;
+
+  return `
+    <div class="trend-chart">
+      <div class="trend-bars" style="--bar-count: ${points.length}">
+        ${points.map((point, index) => `
+          <article class="score-bar${index === points.length - 1 ? " is-current" : ""}" title="${point.title}">
+            <div style="height: ${Math.max(point.value, 4)}%"></div>
+            <span>${point.label}</span>
+            ${options.showValue ? `<strong>${point.value}</strong>` : ""}
+          </article>
+        `).join("")}
+      </div>
+      <svg class="trend-average" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="${svgPoints}" />
+      </svg>
+      <span class="trend-badge ${trendDelta >= 0 ? "is-up" : "is-down"}">${averageWindow > 1 ? `${averageWindow}d avg ` : "trend "}${trendLabel}</span>
+    </div>
+  `;
 }
 
 function renderHabitConsistency(rows) {
@@ -847,41 +881,27 @@ function renderScoreDrivers(rows) {
     return;
   }
 
-  const losses = new Map();
-  for (const row of rows) {
-    const weight = 100 / row.computed.scoreItems.length;
-    for (const item of row.computed.scoreItems) {
-      const current = losses.get(item.label) || { label: item.label, lost: 0, count: 0 };
-      current.lost += (1 - item.value) * weight;
-      current.count += 1;
-      losses.set(item.label, current);
-    }
-    if (row.day.masturbating) {
-      const current = losses.get("Masturbating penalty") || { label: "Masturbating penalty", lost: 0, count: 0 };
-      current.lost += 10;
-      current.count += 1;
-      losses.set("Masturbating penalty", current);
-    }
+  const drivers = relationshipHabitDefinitions()
+    .map(habit => relationshipDriver(rows, habit))
+    .filter(driver => driver && driver.difference > 0)
+    .sort((a, b) => b.difference - a.difference)
+    .slice(0, 3);
+
+  if (drivers.length === 0) {
+    els.scoreDrivers.innerHTML = `<p class="empty-insight">Track fulfilled and missed days for habits to see score drivers.</p>`;
+    return;
   }
 
-  const drivers = [...losses.values()]
-    .map(item => ({ ...item, averageLoss: item.lost / rows.length }))
-    .sort((a, b) => b.averageLoss - a.averageLoss);
-  const worst = drivers.slice(0, 5);
-  const best = drivers.filter(item => item.averageLoss === 0).slice(0, 3);
-
-  els.scoreDrivers.innerHTML = `
-    <div class="mini-section">
-      <strong>Biggest score losses</strong>
-      ${worst.map(item => insightListRow(item.label, `${formatNumber(item.averageLoss)} pts/day`, Math.min(item.averageLoss * 4, 100))).join("")}
-    </div>
-    <div class="mini-section">
-      <strong>Most stable</strong>
-      ${best.length
-        ? best.map(item => insightListRow(item.label, "0 pts lost", 100)).join("")
-        : `<p class="empty-insight">No habit was perfect across this window.</p>`}
-    </div>
-  `;
+  const maxDifference = Math.max(...drivers.map(driver => driver.difference));
+  els.scoreDrivers.innerHTML = drivers.map(driver => {
+    const width = maxDifference > 0 ? (driver.difference / maxDifference) * 100 : 0;
+    return insightListRow(
+      driver.label,
+      `+${formatNumber(driver.difference)} pts`,
+      width,
+      `${Math.round(driver.fulfilledScore)} vs ${Math.round(driver.missedScore)}`
+    );
+  }).join("");
 }
 
 function renderModeComparison(rows) {
@@ -950,26 +970,6 @@ function hasPhoneUsage(phone) {
   return [phone.totalScreenMinutes, phone.socialMinutes, phone.lateNightMinutes].some(Number.isFinite);
 }
 
-function renderRelationshipInsights(rows) {
-  if (rows.length === 0) {
-    els.relationshipInsights.innerHTML = `<p class="empty-insight">No tracked days yet.</p>`;
-    return;
-  }
-
-  const drivers = relationshipHabitDefinitions()
-    .map(habit => relationshipDriver(rows, habit))
-    .filter(Boolean)
-    .sort((a, b) => b.difference - a.difference)
-    .slice(0, 3);
-
-  if (drivers.length === 0) {
-    els.relationshipInsights.innerHTML = `<p class="empty-insight">Track fulfilled and missed days for habits to see score drivers.</p>`;
-    return;
-  }
-
-  els.relationshipInsights.innerHTML = drivers.map(relationshipDriverCard).join("");
-}
-
 function relationshipHabitDefinitions() {
   return [
     { label: "Supplements", fulfilled: row => row.day.supplements },
@@ -1009,27 +1009,10 @@ function relationshipDriver(rows, habit) {
   };
 }
 
-function relationshipDriverCard(driver) {
-  const diff = Math.round(driver.difference);
-  return `
-    <article class="relationship-card">
-      <div>
-        <strong>${driver.label}</strong>
-        <span>Average score difference on fulfilled vs missed days.</span>
-      </div>
-      <div class="relationship-values">
-        <p><span>Fulfilled</span><strong>${Math.round(driver.fulfilledScore)}</strong><small>${driver.fulfilledCount}d</small></p>
-        <p><span>Missed</span><strong>${Math.round(driver.missedScore)}</strong><small>${driver.missedCount}d</small></p>
-        <p><span>Difference</span><strong>${diff > 0 ? "+" : ""}${diff}</strong><small>pts</small></p>
-      </div>
-    </article>
-  `;
-}
-
-function insightListRow(label, value, width) {
+function insightListRow(label, value, width, detail = "") {
   return `
     <article class="insight-list-row">
-      <span>${label}</span>
+      <span>${label}${detail ? `<small>${detail}</small>` : ""}</span>
       <div><div style="width: ${Math.max(4, width)}%"></div></div>
       <strong>${value}</strong>
     </article>
