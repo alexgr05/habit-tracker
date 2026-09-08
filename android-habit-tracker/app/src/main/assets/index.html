@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en" data-theme="calm">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#100d0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Habit Streak">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Habit Streak Tracker</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="Tracker controls">
+        <div>
+          <h1>Habit Streak Tracker</h1>
+        </div>
+        <div class="actions">
+          <span id="syncStatus" class="sync-status">Local</span>
+        </div>
+      </section>
+
+      <section id="todayView" class="dashboard-grid app-view" data-view="today" aria-label="Habit dashboard">
+        <section class="tracker-panel" aria-label="Daily tracker">
+          <div class="panel-head">
+            <div class="panel-controls">
+              <div class="mode-toggle" aria-label="Tracker mode">
+                <button id="semesterMode" type="button">Semester</button>
+                <button id="breakMode" type="button">Break</button>
+              </div>
+              <div class="date-strip">
+                <button id="prevDay" class="icon-button" type="button" aria-label="Previous day">&lsaquo;</button>
+                <input id="activeDate" type="date">
+                <button id="nextDay" class="icon-button" type="button" aria-label="Next day">&rsaquo;</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="entry-grid">
+            <button class="field-toggle habit-toggle" data-field="supplements" type="button">Supplements</button>
+            <button class="field-toggle habit-toggle" data-field="floss" type="button">Floss</button>
+            <button class="field-toggle habit-toggle" data-field="legExercise" type="button">Leg Exercise</button>
+            <button class="field-toggle habit-toggle" data-field="mentalRoutine" type="button">Mental Routine</button>
+            <button id="sportsTile" class="field-toggle habit-toggle" data-field="sports" type="button" hidden>Sports</button>
+            <button id="fourthMealTile" class="field-toggle habit-toggle" data-field="fourthMeal" type="button" hidden>4th Meal</button>
+            <button id="backStretchingTile" class="field-toggle habit-toggle" data-field="backStretching" type="button" hidden>Back Stretching</button>
+            <button class="field-toggle habit-toggle penalty-habit" data-field="masturbating" type="button">Masturbating</button>
+            <button class="field-toggle habit-toggle danger-habit" data-field="noSocialMedia" type="button">No Social Media</button>
+            <button class="field-toggle habit-toggle danger-habit streak-habit" data-field="noPorn" type="button">
+              <span>No Porn</span>
+              <strong id="noPornTileStreak">39d</strong>
+            </button>
+          </div>
+
+          <div class="input-grid">
+            <label class="input-card" id="studyCard">
+              <span>Study Hours <strong id="studyTarget">No</strong></span>
+              <input id="studyHours" type="number" inputmode="decimal" min="0" max="24" step="0.25">
+            </label>
+            <label class="input-card" id="bedtimeCard">
+              <span>Bedtime <strong id="asleepTarget">No</strong></span>
+              <input id="bedtime" type="time">
+            </label>
+            <label class="input-card" id="wakeCard">
+              <span>Wake Time <strong id="wakeTarget">No</strong></span>
+              <input id="wakeTime" type="time">
+            </label>
+            <label class="input-card" id="sleepCard">
+              <span>Sleep Hours <strong id="sleepTarget">No</strong></span>
+              <input id="sleepHours" type="text" readonly>
+            </label>
+          </div>
+        </section>
+
+        <aside class="streak-panel" aria-label="Streak summary">
+          <section class="flame-card" aria-label="Daily score">
+            <div class="flame-topline">
+              <div>
+                <p class="eyebrow">Flame</p>
+                <h2>Daily Score</h2>
+              </div>
+              <div class="score-total" aria-label="Today score">
+                <strong id="todayScore">0</strong>
+                <span>/ 100</span>
+              </div>
+            </div>
+            <div class="flame-meter" aria-label="Daily score progress">
+              <div id="scoreFill"></div>
+              <span id="lifeThresholdMarker" class="life-threshold-marker" style="left: 80%"></span>
+            </div>
+            <p id="scoreStatus" class="flame-status">Open day</p>
+          </section>
+
+          <section class="streak-stack" aria-label="Life streak">
+            <article class="summary-card primary-streak">
+              <span>Life Streak</span>
+              <strong id="lifeStreak">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Best Life</span>
+              <strong id="bestLife">0</strong>
+            </article>
+          </section>
+        </aside>
+      </section>
+
+      <details id="insightsView" class="detail-panel insights-panel app-view" data-view="insights" open hidden>
+        <summary>Insights</summary>
+        <div class="insights-body">
+          <section class="insight-stat-grid" aria-label="Recent numbers">
+            <article class="summary-card">
+              <span>Tracked Days</span>
+              <strong id="insightTrackedDays">0</strong>
+            </article>
+            <article class="summary-card primary-streak">
+              <span>Average Score</span>
+              <strong id="insightAverageScore">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Above Avg Days</span>
+              <strong id="insightStreakDays">0</strong>
+            </article>
+            <article class="summary-card" hidden>
+              <span>Avg Study</span>
+              <strong id="insightAverageStudy">0h</strong>
+            </article>
+            <article class="summary-card" hidden>
+              <span>Penalty Days</span>
+              <strong id="insightPenaltyDays">0</strong>
+            </article>
+          </section>
+
+          <section class="insight-focus-grid" aria-label="Charts">
+            <div class="consistency-stack">
+              <article id="semesterConsistencyCard" class="chart-panel">
+                <div class="chart-head">
+                  <h3>Semester Consistency</h3>
+                  <span>Semester days only</span>
+                </div>
+                <div id="semesterHabitConsistency" class="habit-consistency"></div>
+              </article>
+
+              <article id="breakConsistencyCard" class="chart-panel">
+                <div class="chart-head">
+                  <h3>Break Consistency</h3>
+                  <span>Break days only</span>
+                </div>
+                <div id="breakHabitConsistency" class="habit-consistency"></div>
+              </article>
+            </div>
+
+            <div class="trend-stack">
+              <article class="chart-panel">
+                <div class="chart-head">
+                  <h3>Score Trend</h3>
+                  <span>Recent tracked days + 10d average</span>
+                </div>
+                <div id="scoreTrend" class="score-trend"></div>
+              </article>
+
+              <article class="chart-panel">
+                <div class="chart-head">
+                  <h3>Weekly Score Trend</h3>
+                  <span>Average per week</span>
+                </div>
+                <div id="weeklyScoreTrend" class="weekly-score-trend"></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="chart-panel">
+            <div class="chart-head">
+              <h3>Phone Usage</h3>
+              <span>Android companion data</span>
+            </div>
+            <div id="phoneUsageInsights" class="phone-usage-grid"></div>
+          </section>
+
+          <section class="insight-grid" aria-label="Score analysis">
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Score Drivers</h3>
+                <span>Top average score boosts</span>
+              </div>
+              <div id="scoreDrivers" class="insight-list"></div>
+            </article>
+
+            <article class="chart-panel">
+              <div class="chart-head">
+                <h3>Sleep Averages</h3>
+                <span>Tracked sleep days</span>
+              </div>
+              <div id="sleepAverages" class="sleep-average-grid"></div>
+            </article>
+          </section>
+
+          <section class="chart-panel">
+            <div class="chart-head">
+              <h3>Notes</h3>
+              <span>Automatic readout</span>
+            </div>
+            <ul id="insightNotes" class="insight-notes"></ul>
+          </section>
+
+          <section class="insight-grid" aria-label="Insight tables">
+            <details class="detail-panel history-panel">
+              <summary>Recent History</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Day</th>
+                      <th>Score</th>
+                      <th>Life Streak</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyRows"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+        </div>
+      </details>
+
+      <section id="settingsView" class="settings-view app-view" data-view="settings" hidden aria-label="Settings">
+        <section class="settings-panel" aria-label="Design settings">
+          <div>
+            <p class="eyebrow">Design</p>
+            <h2>Theme</h2>
+          </div>
+          <button id="themeToggle" class="icon-action" type="button" aria-label="Switch theme" title="Switch theme">Dark</button>
+        </section>
+
+        <section id="authPanel" class="auth-panel" aria-label="Cloud sync">
+          <div class="auth-head">
+            <p class="eyebrow">Cloud</p>
+            <h2 id="authTitle">Sign in</h2>
+          </div>
+          <div id="authForm" class="auth-form">
+            <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password">
+            <div class="auth-actions">
+              <button id="signInButton" type="button">Sign in</button>
+              <button id="signUpButton" class="secondary" type="button">Create account</button>
+            </div>
+            <button id="resetPasswordButton" class="text-action" type="button">Reset password</button>
+          </div>
+          <div id="passwordResetForm" class="auth-form" hidden>
+            <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password">
+            <button id="updatePasswordButton" type="button">Save new password</button>
+          </div>
+          <div id="signedInPanel" class="signed-in-panel" hidden>
+            <p id="signedInEmail"></p>
+            <button id="changePasswordButton" class="secondary" type="button">Change password</button>
+            <button id="signOutButton" class="secondary" type="button">Sign out</button>
+          </div>
+          <p id="authMessage" class="auth-message"></p>
+        </section>
+      </section>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Mobile sections">
+      <button class="view-nav-button is-active" data-view-target="today" type="button">Today</button>
+      <button class="view-nav-button" data-view-target="insights" type="button">Insights</button>
+      <button class="view-nav-button" data-view-target="settings" type="button">Settings</button>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script src="phone-usage.js"></script>
+  </body>
+</html>
