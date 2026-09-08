@@ -85,22 +85,38 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(false);
-        view.setWebViewClient(new WebViewClient());
+        view.setPadding(0, statusBarHeight() + dp(10), 0, navigationBarHeight());
+        view.setClipToPadding(false);
+        view.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView webView, String url) {
+                super.onPageFinished(webView, url);
+                injectAndroidSafeArea(webView);
+            }
+        });
         view.setFitsSystemWindows(true);
         view.setOnApplyWindowInsetsListener((target, insets) -> {
-            int top = 0;
-            int bottom = 0;
+            int top;
+            int bottom;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 android.graphics.Insets bars = insets.getInsets(Type.statusBars() | Type.navigationBars());
-                top = bars.top;
+                top = bars.top + dp(10);
                 bottom = bars.bottom;
             } else {
-                top = insets.getSystemWindowInsetTop();
+                top = insets.getSystemWindowInsetTop() + dp(10);
                 bottom = insets.getSystemWindowInsetBottom();
             }
             target.setPadding(0, top, 0, bottom);
+            injectAndroidSafeArea(webView);
             return insets;
         });
+    }
+
+    private void injectAndroidSafeArea(WebView view) {
+        int safeTop = statusBarHeight() + dp(16);
+        String script = "document.documentElement.classList.add('android-app');"
+            + "document.documentElement.style.setProperty('--android-safe-top','" + safeTop + "px');";
+        view.evaluateJavascript(script, null);
     }
 
     private void configureSystemBars() {
@@ -110,6 +126,24 @@ public class MainActivity extends Activity {
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         window.getDecorView().setSystemUiVisibility(0);
+    }
+
+    private int statusBarHeight() {
+        return systemDimension("status_bar_height");
+    }
+
+    private int navigationBarHeight() {
+        return systemDimension("navigation_bar_height");
+    }
+
+    private int systemDimension(String name) {
+        int resourceId = getResources().getIdentifier(name, "dimen", "android");
+        if (resourceId <= 0) return 0;
+        return getResources().getDimensionPixelSize(resourceId);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private class PhoneUsageBridge {
