@@ -8,6 +8,7 @@ import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -51,6 +52,9 @@ import java.util.Set;
 public class MainActivity extends android.app.Activity {
     private static final String SUPABASE_URL = "https://ojgffpfrgqkvaenkotwu.supabase.co";
     private static final String SUPABASE_KEY = "sb_publishable_6HKUhHOR5A1F1nkzr62NhQ_QNvhjgMD";
+    private static final String PREFS_NAME = "habit_tracker_session";
+    private static final String PREF_REFRESH_TOKEN = "refresh_token";
+    private static final String PREF_EMAIL = "email";
     private static final ZoneId ZONE = ZoneId.systemDefault();
     private static final int COLOR_BG = Color.rgb(16, 13, 10);
     private static final int COLOR_PANEL = Color.rgb(33, 25, 21);
@@ -87,6 +91,7 @@ public class MainActivity extends android.app.Activity {
     private TextView dateText;
     private TextView phonePreviewText;
     private String accessToken;
+    private String refreshToken;
     private String userId;
     private LocalDate activeDate = LocalDate.now(ZONE);
     private DayState day = new DayState();
@@ -96,6 +101,7 @@ public class MainActivity extends android.app.Activity {
         super.onCreate(savedInstanceState);
         buildUi();
         renderDay();
+        restoreSession();
     }
 
     private void buildUi() {
@@ -123,6 +129,9 @@ public class MainActivity extends android.app.Activity {
         Button signIn = secondaryButton("Sign in and load today");
         signIn.setOnClickListener(view -> signInAndLoad());
         account.addView(signIn, matchWrap());
+        Button signOut = secondaryButton("Sign out");
+        signOut.setOnClickListener(view -> signOut());
+        account.addView(signOut, matchWrap());
 
         LinearLayout today = card();
         root.addView(today, matchWrap());
@@ -219,14 +228,75 @@ public class MainActivity extends android.app.Activity {
             try {
                 JSONObject body = new JSONObject().put("email", email).put("password", password);
                 JSONObject auth = postJson(SUPABASE_URL + "/auth/v1/token?grant_type=password", body.toString(), null, false);
-                accessToken = auth.getString("access_token");
-                userId = auth.getJSONObject("user").getString("id");
+                applySession(auth, email);
                 loadActiveDateFromCloud();
                 runOnUiThread(() -> setStatus("Signed in. Day loaded."));
             } catch (Exception exception) {
                 runOnUiThread(() -> setStatus("Sign-in failed: " + exception.getMessage()));
             }
         }).start();
+    }
+
+    private void restoreSession() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedEmail = prefs.getString(PREF_EMAIL, "");
+        if (!savedEmail.isEmpty()) {
+            emailInput.setText(savedEmail);
+        }
+        String savedRefreshToken = prefs.getString(PREF_REFRESH_TOKEN, "");
+        if (savedRefreshToken.isEmpty()) return;
+
+        setStatus("Restoring session...");
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject().put("refresh_token", savedRefreshToken);
+                JSONObject auth = postJson(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", body.toString(), null, false);
+                applySession(auth, savedEmail);
+                loadActiveDateFromCloud();
+                runOnUiThread(() -> setStatus("Signed in. Day loaded."));
+            } catch (Exception exception) {
+                clearStoredSession();
+                runOnUiThread(() -> setStatus("Session expired. Sign in again."));
+            }
+        }).start();
+    }
+
+    private void applySession(JSONObject auth, String fallbackEmail) throws Exception {
+        accessToken = auth.getString("access_token");
+        refreshToken = auth.optString("refresh_token", refreshToken);
+        JSONObject user = auth.getJSONObject("user");
+        userId = user.getString("id");
+        String email = user.optString("email", fallbackEmail == null ? "" : fallbackEmail);
+        SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit();
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            editor.putString(PREF_REFRESH_TOKEN, refreshToken);
+        }
+        if (email != null && !email.isEmpty()) {
+            editor.putString(PREF_EMAIL, email);
+        }
+        editor.apply();
+        runOnUiThread(() -> {
+            if (email != null && !email.isEmpty()) {
+                emailInput.setText(email);
+            }
+            passwordInput.setText("");
+        });
+    }
+
+    private void signOut() {
+        accessToken = null;
+        refreshToken = null;
+        userId = null;
+        clearStoredSession();
+        passwordInput.setText("");
+        setStatus("Signed out.");
+    }
+
+    private void clearStoredSession() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .remove(PREF_REFRESH_TOKEN)
+            .apply();
     }
 
     private void loadActiveDateFromCloud() throws Exception {
