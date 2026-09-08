@@ -11,6 +11,11 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsets.Type;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -53,6 +58,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureSystemBars();
         webView = new WebView(this);
         configureWebView(webView);
         webView.addJavascriptInterface(new PhoneUsageBridge(), "HabitAndroid");
@@ -80,6 +86,30 @@ public class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(false);
         view.setWebViewClient(new WebViewClient());
+        view.setFitsSystemWindows(true);
+        view.setOnApplyWindowInsetsListener((target, insets) -> {
+            int top = 0;
+            int bottom = 0;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets bars = insets.getInsets(Type.statusBars() | Type.navigationBars());
+                top = bars.top;
+                bottom = bars.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            target.setPadding(0, top, 0, bottom);
+            return insets;
+        });
+    }
+
+    private void configureSystemBars() {
+        Window window = getWindow();
+        window.setStatusBarColor(android.graphics.Color.rgb(16, 13, 10));
+        window.setNavigationBarColor(android.graphics.Color.rgb(16, 13, 10));
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        window.getDecorView().setSystemUiVisibility(0);
     }
 
     private class PhoneUsageBridge {
