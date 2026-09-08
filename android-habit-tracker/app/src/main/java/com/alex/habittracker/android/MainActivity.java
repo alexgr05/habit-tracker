@@ -3,7 +3,15 @@ package com.alex.habittracker.android;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.app.AppOpsManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
 import android.text.method.PasswordTransformationMethod;
 import android.view.View;
@@ -30,8 +38,15 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class MainActivity extends android.app.Activity {
     private static final String SUPABASE_URL = "https://ojgffpfrgqkvaenkotwu.supabase.co";
@@ -45,6 +60,20 @@ public class MainActivity extends android.app.Activity {
     private static final int COLOR_LINE = Color.rgb(73, 56, 45);
     private static final int COLOR_AMBER = Color.rgb(240, 168, 74);
     private static final int COLOR_RED = Color.rgb(229, 122, 99);
+    private static final Set<String> SOCIAL_PACKAGES = new HashSet<>(Arrays.asList(
+        "com.instagram.android",
+        "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill",
+        "com.snapchat.android",
+        "com.facebook.katana",
+        "com.facebook.orca",
+        "com.twitter.android",
+        "com.x.android",
+        "com.reddit.frontpage",
+        "com.google.android.youtube",
+        "com.discord",
+        "org.telegram.messenger"
+    ));
 
     private final Map<String, Button> toggleButtons = new LinkedHashMap<>();
     private EditText emailInput;
@@ -55,6 +84,7 @@ public class MainActivity extends android.app.Activity {
     private TextView statusText;
     private TextView scoreText;
     private TextView modeText;
+    private TextView phonePreviewText;
     private String accessToken;
     private String userId;
     private DayState day = new DayState();
@@ -137,6 +167,25 @@ public class MainActivity extends android.app.Activity {
         save.setOnClickListener(view -> saveToday());
         today.addView(save, matchWrap());
 
+        LinearLayout phone = card();
+        root.addView(phone, matchWrap());
+        phone.addView(label("Phone Usage"));
+        TextView phoneHint = text("Reads Android screen time and saves it to the same Supabase project.", 13, COLOR_MUTED, false);
+        phone.addView(phoneHint, matchWrap());
+        Button permission = secondaryButton("Open Usage Access Settings");
+        permission.setOnClickListener(view -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+        phone.addView(permission, matchWrap());
+        Button loadPhone = secondaryButton("Load Phone Usage");
+        loadPhone.setOnClickListener(view -> loadPhoneUsage());
+        phone.addView(loadPhone, matchWrap());
+        Button syncPhone = primaryButton("Sync Phone Usage");
+        syncPhone.setOnClickListener(view -> syncPhoneUsage());
+        phone.addView(syncPhone, matchWrap());
+        phonePreviewText = text("Phone usage not loaded.", 15, COLOR_INK, false);
+        phonePreviewText.setPadding(dp(12), dp(12), dp(12), dp(12));
+        phonePreviewText.setBackground(cardBackground(COLOR_BG, COLOR_LINE));
+        phone.addView(phonePreviewText, matchWrap());
+
         statusText = text("Not signed in.", 14, COLOR_MUTED, false);
         root.addView(statusText, matchWrap());
 
@@ -197,6 +246,121 @@ public class MainActivity extends android.app.Activity {
                 runOnUiThread(() -> setStatus("Save failed: " + exception.getMessage()));
             }
         }).start();
+    }
+
+    private void loadPhoneUsage() {
+        if (!hasUsageAccess()) {
+            setStatus("Enable Usage Access first.");
+            return;
+        }
+
+        setStatus("Reading phone usage...");
+        new Thread(() -> {
+            try {
+                UsageSnapshot snapshot = collectUsage(LocalDate.now(ZONE));
+                runOnUiThread(() -> {
+                    phonePreviewText.setText(snapshot.preview());
+                    setStatus("Phone usage loaded.");
+                });
+            } catch (Exception exception) {
+                runOnUiThread(() -> setStatus("Phone usage read failed: " + exception.getMessage()));
+            }
+        }).start();
+    }
+
+    private void syncPhoneUsage() {
+        if (accessToken == null || userId == null) {
+            setStatus("Sign in first.");
+            return;
+        }
+        if (!hasUsageAccess()) {
+            setStatus("Enable Usage Access first.");
+            return;
+        }
+
+        setStatus("Syncing phone usage...");
+        new Thread(() -> {
+            try {
+                UsageSnapshot snapshot = collectUsage(LocalDate.now(ZONE));
+                JSONArray rows = new JSONArray();
+                rows.put(snapshot.toJson(userId));
+                postJson(
+                    SUPABASE_URL + "/rest/v1/phone_usage_days?on_conflict=user_id,date",
+                    rows.toString(),
+                    accessToken,
+                    true
+                );
+                runOnUiThread(() -> {
+                    phonePreviewText.setText(snapshot.preview());
+                    setStatus("Phone usage synced.");
+                });
+            } catch (Exception exception) {
+                runOnUiThread(() -> setStatus("Phone usage sync failed: " + exception.getMessage()));
+            }
+        }).start();
+    }
+
+    private UsageSnapshot collectUsage(LocalDate date) {
+        long dayStart = date.atStartOfDay(ZONE).toInstant().toEpochMilli();
+        long now = System.currentTimeMillis();
+        long lateNightEnd = date.atStartOfDay(ZONE).plusHours(4).toInstant().toEpochMilli();
+
+        UsageWindow fullDay = collectUsageWindow(dayStart, now);
+        UsageWindow lateNight = collectUsageWindow(dayStart, Math.min(now, lateNightEnd));
+
+        return new UsageSnapshot(
+            date.toString(),
+            fullDay.totalMinutes,
+            fullDay.socialMinutes,
+            lateNight.totalMinutes,
+            fullDay.appBreakdown
+        );
+    }
+
+    private UsageWindow collectUsageWindow(long startMillis, long endMillis) {
+        UsageStatsManager manager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
+        List<UsageStats> stats = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startMillis, endMillis);
+        PackageManager packageManager = getPackageManager();
+        Map<String, Integer> appBreakdown = new HashMap<>();
+        int total = 0;
+        int social = 0;
+
+        for (UsageStats item : stats) {
+            long foregroundMs = item.getTotalTimeInForeground();
+            if (foregroundMs <= 0) continue;
+
+            int minutes = (int) Math.round(foregroundMs / 60000.0);
+            if (minutes <= 0) continue;
+
+            total += minutes;
+            if (SOCIAL_PACKAGES.contains(item.getPackageName())) {
+                social += minutes;
+            }
+
+            String appName = appLabel(packageManager, item.getPackageName());
+            appBreakdown.put(appName, appBreakdown.getOrDefault(appName, 0) + minutes);
+        }
+
+        return new UsageWindow(total, social, appBreakdown);
+    }
+
+    private String appLabel(PackageManager packageManager, String packageName) {
+        try {
+            ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
+            return packageManager.getApplicationLabel(info).toString();
+        } catch (Exception ignored) {
+            return packageName;
+        }
+    }
+
+    private boolean hasUsageAccess() {
+        AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            getPackageName()
+        );
+        return mode == AppOpsManager.MODE_ALLOWED;
     }
 
     private void setMode(String mode) {
@@ -466,6 +630,88 @@ public class MainActivity extends android.app.Activity {
             case "noPorn": return "No Porn";
             case "masturbating": return "Masturbating -10";
             default: return key;
+        }
+    }
+
+    private static class UsageWindow {
+        final int totalMinutes;
+        final int socialMinutes;
+        final Map<String, Integer> appBreakdown;
+
+        UsageWindow(int totalMinutes, int socialMinutes, Map<String, Integer> appBreakdown) {
+            this.totalMinutes = totalMinutes;
+            this.socialMinutes = socialMinutes;
+            this.appBreakdown = appBreakdown;
+        }
+    }
+
+    private static class UsageSnapshot {
+        final String date;
+        final int totalScreenMinutes;
+        final int socialMinutes;
+        final int lateNightMinutes;
+        final Map<String, Integer> appBreakdown;
+
+        UsageSnapshot(String date, int totalScreenMinutes, int socialMinutes, int lateNightMinutes, Map<String, Integer> appBreakdown) {
+            this.date = date;
+            this.totalScreenMinutes = totalScreenMinutes;
+            this.socialMinutes = socialMinutes;
+            this.lateNightMinutes = lateNightMinutes;
+            this.appBreakdown = appBreakdown;
+        }
+
+        JSONObject toJson(String userId) throws Exception {
+            JSONObject breakdown = new JSONObject();
+            for (Map.Entry<String, Integer> entry : appBreakdown.entrySet()) {
+                breakdown.put(entry.getKey(), entry.getValue());
+            }
+            return new JSONObject()
+                .put("user_id", userId)
+                .put("date", date)
+                .put("total_screen_minutes", totalScreenMinutes)
+                .put("social_minutes", socialMinutes)
+                .put("late_night_minutes", lateNightMinutes)
+                .put("app_breakdown", breakdown)
+                .put("updated_at", Instant.now().toString());
+        }
+
+        String preview() {
+            return String.format(
+                Locale.getDefault(),
+                "Today\nTotal screen: %s\nSocial media: %s\nLate night: %s\n\nTop apps\n%s",
+                minutes(totalScreenMinutes),
+                minutes(socialMinutes),
+                minutes(lateNightMinutes),
+                topAppsText()
+            );
+        }
+
+        private String topAppsText() {
+            if (appBreakdown.isEmpty()) return "No app usage found yet.";
+
+            List<Map.Entry<String, Integer>> apps = new ArrayList<>(appBreakdown.entrySet());
+            apps.sort(Comparator.comparingInt((Map.Entry<String, Integer> entry) -> entry.getValue()).reversed());
+
+            StringBuilder builder = new StringBuilder();
+            int limit = Math.min(5, apps.size());
+            for (int index = 0; index < limit; index++) {
+                Map.Entry<String, Integer> app = apps.get(index);
+                if (index > 0) builder.append("\n");
+                builder.append(index + 1)
+                    .append(". ")
+                    .append(app.getKey())
+                    .append(" - ")
+                    .append(minutes(app.getValue()));
+            }
+            return builder.toString();
+        }
+
+        private static String minutes(int value) {
+            int hours = value / 60;
+            int minutes = value % 60;
+            if (hours == 0) return minutes + "m";
+            if (minutes == 0) return hours + "h";
+            return hours + "h " + minutes + "m";
         }
     }
 
