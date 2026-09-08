@@ -3,7 +3,7 @@ package com.alex.habittracker.android;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AppOpsManager;
-import android.app.usage.UsageStats;
+import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
@@ -18,7 +18,6 @@ import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -128,22 +127,15 @@ public class MainActivity extends Activity {
         }
 
         long start = date.atStartOfDay(ZONE).toInstant().toEpochMilli();
-        long end = date.plusDays(1).atStartOfDay(ZONE).toInstant().toEpochMilli();
-        List<UsageStats> stats = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end);
-        if (stats == null) stats = new ArrayList<>();
-
-        Map<String, Long> byPackage = new HashMap<>();
-        long total = 0L;
-        long social = 0L;
-        for (UsageStats stat : stats) {
-            long foreground = Math.max(0L, stat.getTotalTimeInForeground());
-            if (foreground <= 0L) continue;
-            byPackage.merge(stat.getPackageName(), foreground, Long::sum);
-            total += foreground;
-            if (SOCIAL_PACKAGES.contains(stat.getPackageName())) {
-                social += foreground;
-            }
-        }
+        long dayEnd = date.plusDays(1).atStartOfDay(ZONE).toInstant().toEpochMilli();
+        long end = Math.min(dayEnd, System.currentTimeMillis());
+        if (end <= start) end = dayEnd;
+        Map<String, Long> byPackage = collectForegroundMillis(manager, start, end);
+        long total = byPackage.values().stream().mapToLong(Long::longValue).sum();
+        long social = byPackage.entrySet().stream()
+            .filter(entry -> SOCIAL_PACKAGES.contains(entry.getKey()))
+            .mapToLong(Map.Entry::getValue)
+            .sum();
 
         JSONObject breakdown = new JSONObject();
         List<Map.Entry<String, Long>> entries = new ArrayList<>(byPackage.entrySet());
@@ -158,24 +150,65 @@ public class MainActivity extends Activity {
             .put("date", date.toString())
             .put("totalScreenMinutes", Math.round(total / 60000.0))
             .put("socialMinutes", Math.round(social / 60000.0))
-            .put("lateNightMinutes", readLateNightMinutes(manager, start, end))
+            .put("lateNightMinutes", readLateNightMinutes(manager, date))
             .put("appBreakdown", breakdown);
     }
 
-    private int readLateNightMinutes(UsageStatsManager manager, long start, long end) {
-        long lateStart = LocalDate.ofInstant(Instant.ofEpochMilli(start), ZONE)
-            .plusDays(1)
+    private Map<String, Long> collectForegroundMillis(UsageStatsManager manager, long start, long end) {
+        UsageEvents events = manager.queryEvents(start, end);
+        Map<String, Long> activeStarts = new HashMap<>();
+        Map<String, Long> totals = new HashMap<>();
+        UsageEvents.Event event = new UsageEvents.Event();
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event);
+            String packageName = event.getPackageName();
+            if (packageName == null) continue;
+
+            int type = event.getEventType();
+            long timestamp = Math.max(start, Math.min(end, event.getTimeStamp()));
+            if (isForegroundEvent(type)) {
+                activeStarts.put(packageName, timestamp);
+            } else if (isBackgroundEvent(type)) {
+                Long activeStart = activeStarts.remove(packageName);
+                if (activeStart != null && timestamp > activeStart) {
+                    totals.merge(packageName, timestamp - activeStart, Long::sum);
+                }
+            }
+        }
+
+        for (Map.Entry<String, Long> active : activeStarts.entrySet()) {
+            if (end > active.getValue()) {
+                totals.merge(active.getKey(), end - active.getValue(), Long::sum);
+            }
+        }
+
+        return totals;
+    }
+
+    private boolean isForegroundEvent(int type) {
+        return type == UsageEvents.Event.MOVE_TO_FOREGROUND
+            || type == UsageEvents.Event.ACTIVITY_RESUMED;
+    }
+
+    private boolean isBackgroundEvent(int type) {
+        return type == UsageEvents.Event.MOVE_TO_BACKGROUND
+            || type == UsageEvents.Event.ACTIVITY_PAUSED
+            || type == UsageEvents.Event.ACTIVITY_STOPPED;
+    }
+
+    private int readLateNightMinutes(UsageStatsManager manager, LocalDate date) {
+        long lateStart = date
             .atStartOfDay(ZONE)
             .toInstant()
             .toEpochMilli();
-        long lateEnd = Math.min(end, lateStart + (3L * 60L * 60L * 1000L));
+        long lateEnd = Math.min(lateStart + (3L * 60L * 60L * 1000L), System.currentTimeMillis());
         if (lateEnd <= lateStart) return 0;
-        List<UsageStats> lateStats = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, lateStart, lateEnd);
-        if (lateStats == null) return 0;
-        long total = 0L;
-        for (UsageStats stat : lateStats) {
-            total += Math.max(0L, stat.getTotalTimeInForeground());
-        }
+        long total = collectForegroundMillis(manager, lateStart, lateEnd)
+            .values()
+            .stream()
+            .mapToLong(Long::longValue)
+            .sum();
         return (int) Math.round(total / 60000.0);
     }
 
