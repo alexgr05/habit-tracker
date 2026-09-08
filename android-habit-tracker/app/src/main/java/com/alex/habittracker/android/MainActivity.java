@@ -84,9 +84,11 @@ public class MainActivity extends android.app.Activity {
     private TextView statusText;
     private TextView scoreText;
     private TextView modeText;
+    private TextView dateText;
     private TextView phonePreviewText;
     private String accessToken;
     private String userId;
+    private LocalDate activeDate = LocalDate.now(ZONE);
     private DayState day = new DayState();
 
     @Override
@@ -125,6 +127,18 @@ public class MainActivity extends android.app.Activity {
         LinearLayout today = card();
         root.addView(today, matchWrap());
         today.addView(label("Today"));
+
+        LinearLayout dateRow = row();
+        Button previousDay = secondaryButton("<");
+        previousDay.setOnClickListener(view -> shiftDate(-1));
+        Button nextDay = secondaryButton(">");
+        nextDay.setOnClickListener(view -> shiftDate(1));
+        dateText = text("", 18, COLOR_INK, true);
+        dateText.setGravity(android.view.Gravity.CENTER);
+        dateRow.addView(previousDay, weightWrap());
+        dateRow.addView(dateText, weightWrap());
+        dateRow.addView(nextDay, weightWrap());
+        today.addView(dateRow, matchWrap());
 
         LinearLayout modeRow = row();
         Button semester = secondaryButton("Semester");
@@ -207,22 +221,35 @@ public class MainActivity extends android.app.Activity {
                 JSONObject auth = postJson(SUPABASE_URL + "/auth/v1/token?grant_type=password", body.toString(), null, false);
                 accessToken = auth.getString("access_token");
                 userId = auth.getJSONObject("user").getString("id");
-                loadTodayFromCloud();
-                runOnUiThread(() -> setStatus("Signed in. Today loaded."));
+                loadActiveDateFromCloud();
+                runOnUiThread(() -> setStatus("Signed in. Day loaded."));
             } catch (Exception exception) {
                 runOnUiThread(() -> setStatus("Sign-in failed: " + exception.getMessage()));
             }
         }).start();
     }
 
-    private void loadTodayFromCloud() throws Exception {
-        String date = LocalDate.now(ZONE).toString();
+    private void loadActiveDateFromCloud() throws Exception {
+        String date = activeDate.toString();
         String endpoint = SUPABASE_URL + "/rest/v1/habit_days?date=eq." + encode(date) + "&select=data&limit=1";
         JSONArray rows = getJsonArray(endpoint, accessToken);
         if (rows.length() > 0 && !rows.getJSONObject(0).isNull("data")) {
             day = DayState.fromJson(rows.getJSONObject(0).getJSONObject("data"));
+        } else {
+            day = new DayState();
+            day.mode = previousTrackedMode();
         }
         runOnUiThread(this::renderDay);
+    }
+
+    private String previousTrackedMode() throws Exception {
+        String endpoint = SUPABASE_URL
+            + "/rest/v1/habit_days?date=lt." + encode(activeDate.toString())
+            + "&select=data&order=date.desc&limit=1";
+        JSONArray rows = getJsonArray(endpoint, accessToken);
+        if (rows.length() == 0 || rows.getJSONObject(0).isNull("data")) return "semester";
+        JSONObject data = rows.getJSONObject(0).getJSONObject("data");
+        return data.optString("mode", "semester");
     }
 
     private void saveToday() {
@@ -237,7 +264,7 @@ public class MainActivity extends android.app.Activity {
                 JSONArray rows = new JSONArray();
                 rows.put(new JSONObject()
                     .put("user_id", userId)
-                    .put("date", LocalDate.now(ZONE).toString())
+                    .put("date", activeDate.toString())
                     .put("data", day.toJson())
                     .put("updated_at", Instant.now().toString()));
                 postJson(SUPABASE_URL + "/rest/v1/habit_days?on_conflict=user_id,date", rows.toString(), accessToken, true);
@@ -257,7 +284,7 @@ public class MainActivity extends android.app.Activity {
         setStatus("Reading phone usage...");
         new Thread(() -> {
             try {
-                UsageSnapshot snapshot = collectUsage(LocalDate.now(ZONE));
+                UsageSnapshot snapshot = collectUsage(activeDate);
                 runOnUiThread(() -> {
                     phonePreviewText.setText(snapshot.preview());
                     setStatus("Phone usage loaded.");
@@ -281,7 +308,7 @@ public class MainActivity extends android.app.Activity {
         setStatus("Syncing phone usage...");
         new Thread(() -> {
             try {
-                UsageSnapshot snapshot = collectUsage(LocalDate.now(ZONE));
+                UsageSnapshot snapshot = collectUsage(activeDate);
                 JSONArray rows = new JSONArray();
                 rows.put(snapshot.toJson(userId));
                 postJson(
@@ -368,6 +395,28 @@ public class MainActivity extends android.app.Activity {
         renderDay();
     }
 
+    private void shiftDate(int days) {
+        syncInputsToDay();
+        activeDate = activeDate.plusDays(days);
+        phonePreviewText.setText("Phone usage not loaded.");
+        if (accessToken == null) {
+            day = new DayState();
+            renderDay();
+            setStatus("Sign in to load this day.");
+            return;
+        }
+
+        setStatus("Loading day...");
+        new Thread(() -> {
+            try {
+                loadActiveDateFromCloud();
+                runOnUiThread(() -> setStatus("Day loaded."));
+            } catch (Exception exception) {
+                runOnUiThread(() -> setStatus("Load failed: " + exception.getMessage()));
+            }
+        }).start();
+    }
+
     private void addToggle(LinearLayout parent, String key, String label) {
         Button button = secondaryButton(label);
         button.setOnClickListener(view -> {
@@ -387,6 +436,7 @@ public class MainActivity extends android.app.Activity {
 
     private void renderDay() {
         boolean breakMode = "break".equals(day.mode);
+        dateText.setText(activeDate.toString());
         modeText.setText(breakMode ? "Break mode: sports, 4th meal, back stretching." : "Semester mode: study hours.");
         for (Map.Entry<String, Button> entry : toggleButtons.entrySet()) {
             String key = entry.getKey();
