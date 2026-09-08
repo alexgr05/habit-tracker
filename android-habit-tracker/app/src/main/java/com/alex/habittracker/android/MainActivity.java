@@ -85,38 +85,24 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(false);
-        view.setPadding(0, statusBarHeight() + dp(10), 0, navigationBarHeight());
+        view.setPadding(0, statusBarHeight() + dp(2), 0, navigationBarHeight());
         view.setClipToPadding(false);
-        view.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView webView, String url) {
-                super.onPageFinished(webView, url);
-                injectAndroidSafeArea(webView);
-            }
-        });
+        view.setWebViewClient(new WebViewClient());
         view.setFitsSystemWindows(true);
         view.setOnApplyWindowInsetsListener((target, insets) -> {
             int top;
             int bottom;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 android.graphics.Insets bars = insets.getInsets(Type.statusBars() | Type.navigationBars());
-                top = bars.top + dp(10);
+                top = bars.top + dp(2);
                 bottom = bars.bottom;
             } else {
-                top = insets.getSystemWindowInsetTop() + dp(10);
+                top = insets.getSystemWindowInsetTop() + dp(2);
                 bottom = insets.getSystemWindowInsetBottom();
             }
             target.setPadding(0, top, 0, bottom);
-            injectAndroidSafeArea(webView);
             return insets;
         });
-    }
-
-    private void injectAndroidSafeArea(WebView view) {
-        int safeTop = statusBarHeight() + dp(16);
-        String script = "document.documentElement.classList.add('android-app');"
-            + "document.documentElement.style.setProperty('--android-safe-top','" + safeTop + "px');";
-        view.evaluateJavascript(script, null);
     }
 
     private void configureSystemBars() {

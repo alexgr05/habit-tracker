@@ -99,10 +99,6 @@ input {
   padding: 24px 0 96px;
 }
 
-.android-app .app-shell {
-  padding-top: max(24px, var(--android-safe-top, 36px));
-}
-
 .app-view[hidden] {
   display: none !important;
 }
@@ -1333,10 +1329,6 @@ tr:last-child td {
   .app-shell {
     width: 100%;
     padding: 12px 10px 88px;
-  }
-
-  .android-app .app-shell {
-    padding-top: max(28px, var(--android-safe-top, 42px));
   }
 
   .topbar {
