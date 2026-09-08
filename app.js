@@ -180,6 +180,16 @@ document.querySelectorAll(".field-toggle").forEach(button => {
   });
 });
 
+document.addEventListener("click", event => {
+  const action = event.target?.dataset?.androidPhoneAction;
+  if (action === "permission") {
+    window.HabitAndroid?.openUsageAccessSettings();
+  }
+  if (action === "sync") {
+    syncAndroidPhoneUsage(activeDate);
+  }
+});
+
 function loadState() {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey));
@@ -434,6 +444,57 @@ async function loadPhoneUsageDays() {
       lateNightMinutes: row.late_night_minutes,
     },
   ]));
+}
+
+async function syncAndroidPhoneUsage(date = activeDate) {
+  if (!window.HabitAndroid) return;
+  if (!currentUser) {
+    setAuthMessage("Sign in before syncing phone usage.");
+    return;
+  }
+
+  let snapshot;
+  try {
+    snapshot = JSON.parse(window.HabitAndroid.readUsageForDate(date));
+  } catch {
+    setSyncStatus("Phone sync error", true, "error");
+    return;
+  }
+
+  if (snapshot.needsPermission) {
+    window.HabitAndroid.openUsageAccessSettings();
+    return;
+  }
+  if (snapshot.error) {
+    setSyncStatus("Phone sync error", true, "error");
+    setAuthMessage(snapshot.error);
+    return;
+  }
+
+  setSyncStatus("Syncing phone", true, "saving");
+  const { error } = await supabaseClient.from("phone_usage_days").upsert({
+    user_id: currentUser.id,
+    date: snapshot.date || date,
+    total_screen_minutes: Number(snapshot.totalScreenMinutes) || 0,
+    social_minutes: Number(snapshot.socialMinutes) || 0,
+    late_night_minutes: Number(snapshot.lateNightMinutes) || 0,
+    app_breakdown: snapshot.appBreakdown || {},
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id,date" });
+
+  if (error) {
+    setSyncStatus("Phone sync error", true, "error");
+    setAuthMessage(error.message);
+    return;
+  }
+
+  phoneUsageByDate[snapshot.date || date] = {
+    totalScreenMinutes: Number(snapshot.totalScreenMinutes) || 0,
+    socialMinutes: Number(snapshot.socialMinutes) || 0,
+    lateNightMinutes: Number(snapshot.lateNightMinutes) || 0,
+  };
+  setSyncStatus("Phone synced", true);
+  render();
 }
 
 async function syncAllLocalDays() {
@@ -963,9 +1024,10 @@ function sleepAverageCard(label, value, detail) {
 }
 
 function renderPhoneUsageInsights(rows) {
+  const androidControls = renderAndroidPhoneUsageControls();
   const phoneRows = rows.filter(row => hasPhoneUsage(row.phone));
   if (phoneRows.length === 0) {
-    els.phoneUsageInsights.innerHTML = `<p class="empty-insight">No Android phone usage data yet.</p>`;
+    els.phoneUsageInsights.innerHTML = `${androidControls}<p class="empty-insight">No Android phone usage data yet.</p>`;
     return;
   }
 
@@ -975,11 +1037,26 @@ function renderPhoneUsageInsights(rows) {
   const avgLate = average(phoneRows.map(row => row.phone.lateNightMinutes).filter(Number.isFinite));
 
   els.phoneUsageInsights.innerHTML = [
+    androidControls,
     phoneUsageCard("Latest total", formatMinutes(latest.phone.totalScreenMinutes), formatShortDate(latest.date)),
     phoneUsageCard("Avg total", formatMinutes(avgTotal), `${phoneRows.length}d`),
     phoneUsageCard("Avg social", formatMinutes(avgSocial), "tracked days"),
     phoneUsageCard("Avg late night", formatMinutes(avgLate), "after 00:00"),
   ].join("");
+}
+
+function renderAndroidPhoneUsageControls() {
+  if (!window.HabitAndroid) return "";
+  const hasPermission = Boolean(window.HabitAndroid.hasUsageAccess?.());
+  return `
+    <article class="phone-usage-card android-phone-sync-card">
+      <span>Android Sync</span>
+      <strong>${hasPermission ? "Ready" : "Permission needed"}</strong>
+      <small>${formatShortDate(activeDate)}</small>
+      <button type="button" data-android-phone-action="permission">Permission</button>
+      <button type="button" data-android-phone-action="sync">Sync selected day</button>
+    </article>
+  `;
 }
 
 function phoneUsageCard(label, value, detail) {
