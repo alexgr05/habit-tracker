@@ -7,9 +7,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -29,7 +35,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +49,15 @@ public class MainActivity extends android.app.Activity {
     private static final String SUPABASE_URL = "https://ojgffpfrgqkvaenkotwu.supabase.co";
     private static final String SUPABASE_KEY = "sb_publishable_6HKUhHOR5A1F1nkzr62NhQ_QNvhjgMD";
     private static final ZoneId ZONE = ZoneId.systemDefault();
+    private static final int COLOR_BG = Color.rgb(16, 13, 10);
+    private static final int COLOR_PANEL = Color.rgb(33, 25, 21);
+    private static final int COLOR_PANEL_STRONG = Color.rgb(43, 33, 26);
+    private static final int COLOR_INK = Color.rgb(255, 243, 225);
+    private static final int COLOR_MUTED = Color.rgb(207, 186, 165);
+    private static final int COLOR_LINE = Color.rgb(73, 56, 45);
+    private static final int COLOR_AMBER = Color.rgb(240, 168, 74);
+    private static final int COLOR_GREEN = Color.rgb(165, 211, 143);
+    private static final int COLOR_RED = Color.rgb(229, 122, 99);
     private static final Set<String> SOCIAL_PACKAGES = new HashSet<>(Arrays.asList(
         "com.instagram.android",
         "com.zhiliaoapp.musically",
@@ -73,59 +90,80 @@ public class MainActivity extends android.app.Activity {
 
     private void buildUi() {
         ScrollView scrollView = new ScrollView(this);
+        scrollView.setBackgroundColor(COLOR_BG);
+        scrollView.setFillViewport(true);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(18));
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(18), dp(22), dp(18), dp(28));
         scrollView.addView(root);
 
         TextView title = new TextView(this);
         title.setText("Habit Companion");
         title.setTextSize(26);
-        title.setGravity(Gravity.START);
-        title.setTypeface(null, 1);
+        title.setTextColor(COLOR_INK);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         root.addView(title, matchWrap());
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Uploads Android phone usage to your habit tracker.");
+        subtitle.setText("Sync Android screen time into your habit tracker.");
         subtitle.setTextSize(15);
+        subtitle.setTextColor(COLOR_MUTED);
         subtitle.setPadding(0, dp(6), 0, dp(18));
         root.addView(subtitle, matchWrap());
 
+        LinearLayout accountCard = card();
+        root.addView(accountCard, matchWrap());
+        accountCard.addView(sectionLabel("Account"));
+
         emailInput = new EditText(this);
         emailInput.setHint("Supabase email");
-        emailInput.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-        root.addView(emailInput, matchWrap());
+        emailInput.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        styleInput(emailInput);
+        accountCard.addView(emailInput, matchWrap());
 
         passwordInput = new EditText(this);
         passwordInput.setHint("Supabase password");
-        passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        root.addView(passwordInput, matchWrap());
+        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        passwordInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        styleInput(passwordInput);
+        accountCard.addView(passwordInput, matchWrap());
 
         Button signInButton = button("Sign in");
         signInButton.setOnClickListener(view -> signIn());
-        root.addView(signInButton, matchWrap());
+        accountCard.addView(signInButton, matchWrap());
+
+        LinearLayout syncCard = card();
+        root.addView(syncCard, matchWrap());
+        syncCard.addView(sectionLabel("Phone Usage"));
 
         Button permissionButton = button("Open Usage Access Settings");
         permissionButton.setOnClickListener(view -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
-        root.addView(permissionButton, matchWrap());
+        syncCard.addView(permissionButton, matchWrap());
 
         Button loadButton = button("Load Today's Usage");
         loadButton.setOnClickListener(view -> loadTodayUsage());
-        root.addView(loadButton, matchWrap());
+        syncCard.addView(loadButton, matchWrap());
 
         Button uploadButton = button("Upload Today");
         uploadButton.setOnClickListener(view -> uploadToday());
-        root.addView(uploadButton, matchWrap());
+        syncCard.addView(uploadButton, matchWrap());
+
+        Button syncButton = primaryButton("Sync Today");
+        syncButton.setOnClickListener(view -> syncToday());
+        syncCard.addView(syncButton, matchWrap());
 
         statusText = new TextView(this);
         statusText.setTextSize(14);
+        statusText.setTextColor(COLOR_MUTED);
         statusText.setPadding(0, dp(16), 0, dp(10));
         root.addView(statusText, matchWrap());
 
         previewText = new TextView(this);
         previewText.setTextSize(16);
-        previewText.setPadding(0, dp(8), 0, dp(8));
+        previewText.setTextColor(COLOR_INK);
+        previewText.setPadding(dp(14), dp(14), dp(14), dp(14));
+        previewText.setBackground(cardBackground(COLOR_PANEL, COLOR_LINE));
         root.addView(previewText, matchWrap());
 
         setContentView(scrollView);
@@ -216,6 +254,38 @@ public class MainActivity extends android.app.Activity {
                 runOnUiThread(() -> setStatus("Uploaded to Supabase."));
             } catch (Exception exception) {
                 runOnUiThread(() -> setStatus("Upload failed: " + exception.getMessage()));
+            }
+        }).start();
+    }
+
+    private void syncToday() {
+        if (accessToken == null || userId == null) {
+            setStatus("Sign in first.");
+            return;
+        }
+        if (!hasUsageAccess()) {
+            setStatus("Enable Usage Access first.");
+            return;
+        }
+
+        setStatus("Syncing today's phone usage...");
+        new Thread(() -> {
+            try {
+                latestSnapshot = collectUsage(LocalDate.now(ZONE));
+                JSONArray rows = new JSONArray();
+                rows.put(latestSnapshot.toJson(userId));
+                postJson(
+                    SUPABASE_URL + "/rest/v1/phone_usage_days?on_conflict=user_id,date",
+                    rows.toString(),
+                    accessToken,
+                    true
+                );
+                runOnUiThread(() -> {
+                    setStatus("Synced today to Supabase.");
+                    previewText.setText(latestSnapshot.preview());
+                });
+            } catch (Exception exception) {
+                runOnUiThread(() -> setStatus("Sync failed: " + exception.getMessage()));
             }
         }).start();
     }
@@ -324,7 +394,53 @@ public class MainActivity extends android.app.Activity {
         Button button = new Button(this);
         button.setText(label);
         button.setAllCaps(false);
+        button.setTextColor(COLOR_INK);
+        button.setBackground(cardBackground(COLOR_PANEL_STRONG, COLOR_LINE));
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
         return button;
+    }
+
+    private Button primaryButton(String label) {
+        Button button = button(label);
+        button.setTextColor(Color.rgb(38, 24, 10));
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setBackground(cardBackground(COLOR_AMBER, COLOR_AMBER));
+        return button;
+    }
+
+    private LinearLayout card() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(14), dp(14), dp(10));
+        card.setBackground(cardBackground(COLOR_PANEL, COLOR_LINE));
+        return card;
+    }
+
+    private TextView sectionLabel(String label) {
+        TextView text = new TextView(this);
+        text.setText(label.toUpperCase(Locale.ROOT));
+        text.setTextColor(COLOR_AMBER);
+        text.setTextSize(12);
+        text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        text.setPadding(0, 0, 0, dp(10));
+        return text;
+    }
+
+    private void styleInput(EditText input) {
+        input.setTextColor(COLOR_INK);
+        input.setHintTextColor(COLOR_MUTED);
+        input.setSingleLine(true);
+        input.setPadding(dp(12), dp(10), dp(12), dp(10));
+        input.setBackground(cardBackground(COLOR_BG, COLOR_LINE));
+    }
+
+    private GradientDrawable cardBackground(int fillColor, int strokeColor) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setColor(fillColor);
+        drawable.setCornerRadius(dp(10));
+        drawable.setStroke(dp(1), strokeColor);
+        return drawable;
     }
 
     private LinearLayout.LayoutParams matchWrap() {
@@ -389,11 +505,32 @@ public class MainActivity extends android.app.Activity {
         String preview() {
             return String.format(
                 Locale.getDefault(),
-                "Today\nTotal screen: %s\nSocial media: %s\nLate night: %s",
+                "Today\nTotal screen: %s\nSocial media: %s\nLate night: %s\n\nTop apps\n%s",
                 minutes(totalScreenMinutes),
                 minutes(socialMinutes),
-                minutes(lateNightMinutes)
+                minutes(lateNightMinutes),
+                topAppsText()
             );
+        }
+
+        private String topAppsText() {
+            if (appBreakdown.isEmpty()) return "No app usage found yet.";
+
+            List<Map.Entry<String, Integer>> apps = new ArrayList<>(appBreakdown.entrySet());
+            apps.sort(Comparator.comparingInt((Map.Entry<String, Integer> entry) -> entry.getValue()).reversed());
+
+            StringBuilder builder = new StringBuilder();
+            int limit = Math.min(5, apps.size());
+            for (int index = 0; index < limit; index++) {
+                Map.Entry<String, Integer> app = apps.get(index);
+                if (index > 0) builder.append("\n");
+                builder.append(index + 1)
+                    .append(". ")
+                    .append(app.getKey())
+                    .append(" - ")
+                    .append(minutes(app.getValue()));
+            }
+            return builder.toString();
         }
 
         private static String minutes(int value) {
