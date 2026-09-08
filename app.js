@@ -55,6 +55,8 @@ let cloudHydrated = false;
 let saveTimer = null;
 let syncInProgress = false;
 let passwordRecoveryMode = false;
+let androidPhoneSyncInProgress = false;
+let androidPhoneLastSync = loadAndroidPhoneLastSync();
 const pendingSaveDates = new Set();
 
 const els = {
@@ -273,6 +275,7 @@ async function handleSession(session) {
     setSyncStatus("Loading cloud", true, "saving");
     await loadCloudDays();
     await loadPhoneUsageDays();
+    await autoSyncAndroidPhoneUsage();
     await syncAllLocalDays();
     cloudHydrated = true;
     if (!navigator.onLine) {
@@ -446,32 +449,50 @@ async function loadPhoneUsageDays() {
   ]));
 }
 
-async function syncAndroidPhoneUsage(date = activeDate) {
+async function autoSyncAndroidPhoneUsage() {
+  if (!window.HabitAndroid || !currentUser || androidPhoneSyncInProgress) return;
+  if (!window.HabitAndroid.hasUsageAccess?.()) return;
+
+  const dates = [isoToday(), addDays(isoToday(), -1)];
+  const pendingDates = dates.filter(date => androidPhoneLastSync[date] !== todaySyncStamp());
+  for (const date of pendingDates) {
+    await syncAndroidPhoneUsage(date, { automatic: true });
+  }
+}
+
+async function syncAndroidPhoneUsage(date = activeDate, options = {}) {
   if (!window.HabitAndroid) return;
   if (!currentUser) {
     setAuthMessage("Sign in before syncing phone usage.");
     return;
   }
+  if (androidPhoneSyncInProgress) return;
+  androidPhoneSyncInProgress = true;
 
   let snapshot;
   try {
     snapshot = JSON.parse(window.HabitAndroid.readUsageForDate(date));
   } catch {
     setSyncStatus("Phone sync error", true, "error");
+    androidPhoneSyncInProgress = false;
     return;
   }
 
   if (snapshot.needsPermission) {
-    window.HabitAndroid.openUsageAccessSettings();
+    if (!options.automatic) {
+      window.HabitAndroid.openUsageAccessSettings();
+    }
+    androidPhoneSyncInProgress = false;
     return;
   }
   if (snapshot.error) {
     setSyncStatus("Phone sync error", true, "error");
     setAuthMessage(snapshot.error);
+    androidPhoneSyncInProgress = false;
     return;
   }
 
-  setSyncStatus("Syncing phone", true, "saving");
+  setSyncStatus(options.automatic ? "Auto-syncing phone" : "Syncing phone", true, "saving");
   const { error } = await supabaseClient.from("phone_usage_days").upsert({
     user_id: currentUser.id,
     date: snapshot.date || date,
@@ -485,6 +506,7 @@ async function syncAndroidPhoneUsage(date = activeDate) {
   if (error) {
     setSyncStatus("Phone sync error", true, "error");
     setAuthMessage(error.message);
+    androidPhoneSyncInProgress = false;
     return;
   }
 
@@ -493,8 +515,23 @@ async function syncAndroidPhoneUsage(date = activeDate) {
     socialMinutes: Number(snapshot.socialMinutes) || 0,
     lateNightMinutes: Number(snapshot.lateNightMinutes) || 0,
   };
-  setSyncStatus("Phone synced", true);
+  androidPhoneLastSync[snapshot.date || date] = todaySyncStamp();
+  localStorage.setItem("habit-tracker-android-phone-last-sync", JSON.stringify(androidPhoneLastSync));
+  setSyncStatus(options.automatic ? "Phone auto-synced" : "Phone synced", true);
+  androidPhoneSyncInProgress = false;
   render();
+}
+
+function loadAndroidPhoneLastSync() {
+  try {
+    return JSON.parse(localStorage.getItem("habit-tracker-android-phone-last-sync")) || {};
+  } catch {
+    return {};
+  }
+}
+
+function todaySyncStamp() {
+  return isoToday();
 }
 
 async function syncAllLocalDays() {
@@ -1048,11 +1085,13 @@ function renderPhoneUsageInsights(rows) {
 function renderAndroidPhoneUsageControls() {
   if (!window.HabitAndroid) return "";
   const hasPermission = Boolean(window.HabitAndroid.hasUsageAccess?.());
+  const lastSync = androidPhoneLastSync[activeDate];
+  const syncLabel = lastSync ? `Last synced ${formatShortDate(lastSync)}` : "Not synced yet";
   return `
     <article class="phone-usage-card android-phone-sync-card">
       <span>Android Sync</span>
-      <strong>${hasPermission ? "Ready" : "Permission needed"}</strong>
-      <small>${formatShortDate(activeDate)}</small>
+      <strong>${androidPhoneSyncInProgress ? "Syncing..." : hasPermission ? "Ready" : "Permission needed"}</strong>
+      <small>${formatShortDate(activeDate)} · ${syncLabel}</small>
       <button type="button" data-android-phone-action="permission">Permission</button>
       <button type="button" data-android-phone-action="sync">Sync selected day</button>
     </article>
