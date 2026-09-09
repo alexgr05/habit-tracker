@@ -83,8 +83,8 @@ public class MainActivity extends Activity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setLoadWithOverviewMode(false);
-        settings.setUseWideViewPort(false);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
         view.setPadding(0, statusBarHeight() + dp(2), 0, navigationBarHeight());
         view.setClipToPadding(false);
         view.setWebViewClient(new WebViewClient());

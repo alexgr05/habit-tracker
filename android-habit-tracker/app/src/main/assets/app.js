@@ -63,6 +63,13 @@ const els = {
   appViews: document.querySelectorAll(".app-view"),
   viewNavButtons: document.querySelectorAll(".view-nav-button"),
   todayScore: document.querySelector("#todayScore"),
+  todayScoreRing: document.querySelector("#todayScoreRing"),
+  scoreRingProgress: document.querySelector("#scoreRingProgress"),
+  scoreStatusCompact: document.querySelector("#scoreStatusCompact"),
+  lifeStreakCompact: document.querySelector("#lifeStreakCompact"),
+  todayDateLabel: document.querySelector("#todayDateLabel"),
+  todayYearLabel: document.querySelector("#todayYearLabel"),
+  weekStrip: document.querySelector("#weekStrip"),
   syncStatus: document.querySelector("#syncStatus"),
   authPanel: document.querySelector("#authPanel"),
   authTitle: document.querySelector("#authTitle"),
@@ -134,6 +141,14 @@ document.querySelector("#prevDay").addEventListener("click", () => {
 
 document.querySelector("#nextDay").addEventListener("click", () => {
   activeDate = addDays(activeDate, 1);
+  render();
+});
+
+els.weekStrip.addEventListener("click", event => {
+  const button = event.target.closest("[data-week-date]");
+  if (!button) return;
+  activeDate = button.dataset.weekDate;
+  ensureDay(activeDate);
   render();
 });
 
@@ -228,6 +243,7 @@ function setMode(mode) {
 }
 
 function setActiveView(view) {
+  document.body.dataset.activeView = view;
   els.appViews.forEach(section => {
     section.hidden = section.dataset.view !== view;
   });
@@ -643,6 +659,8 @@ function render() {
   const breakMode = computed.mode === "break";
 
   els.activeDate.value = activeDate;
+  els.todayDateLabel.textContent = formatFullDate(activeDate);
+  els.todayYearLabel.textContent = activeDate.slice(0, 4);
   els.studyHours.value = day.studyHours;
   els.bedtime.value = day.bedtime;
   els.wakeTime.value = day.wakeTime;
@@ -668,14 +686,19 @@ function render() {
   updateInputStatus(els.sleepCard, els.sleepTarget, computed.sleepOk, computed.sleepHoursText !== "");
 
   els.todayScore.textContent = computed.dailyScore;
+  els.todayScoreRing.textContent = computed.dailyScore;
+  els.scoreRingProgress.style.strokeDashoffset = scoreRingOffset(computed.dailyScore);
   els.scoreFill.style.width = `${computed.dailyScore}%`;
   els.lifeThresholdMarker.style.left = `${Math.max(0, Math.min(computed.lifeThreshold, 100))}%`;
   els.lifeThresholdMarker.title = `Life streak target: above ${computed.lifeThreshold}`;
   els.lifeThresholdMarker.setAttribute("aria-label", `Life streak target: above ${computed.lifeThreshold}`);
   els.scoreStatus.textContent = scoreStatus(computed.dailyScore, computed.lifeOk, computed.lifeThreshold);
+  els.scoreStatusCompact.textContent = computed.lifeOk ? "Streak Burning" : "Below Target";
   els.lifeStreak.textContent = stats.life.current;
+  els.lifeStreakCompact.textContent = stats.life.current;
   els.bestLife.textContent = stats.life.best;
   els.noPornTileStreak.textContent = `${noPornStreakAt(activeDate)}d`;
+  renderWeekStrip();
 
   els.historyRows.innerHTML = makeHistoryRows();
   renderInsights(stats);
@@ -1416,6 +1439,37 @@ function maxDate(a, b) {
 function formatShortDate(iso) {
   const [, month, day] = iso.split("-");
   return `${Number(day)}.${Number(month)}`;
+}
+
+function formatFullDate(iso) {
+  return new Intl.DateTimeFormat("en", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${iso}T12:00:00`));
+}
+
+function renderWeekStrip() {
+  const week = weekStart(activeDate);
+  els.weekStrip.innerHTML = Array.from({ length: 7 }, (_, offset) => {
+    const date = addDays(week, offset);
+    const isActive = date === activeDate;
+    const computed = computeDay(date);
+    const tracked = hasTrackedData(ensureDay(date));
+    return `
+      <button class="week-day${isActive ? " is-active" : ""}${tracked ? " is-tracked" : ""}" type="button" data-week-date="${date}" aria-pressed="${isActive}">
+        <span>${formatDayName(date).toUpperCase()}</span>
+        <strong>${date.slice(-2)}</strong>
+        <i style="opacity:${Math.max(0.25, computed.dailyScore / 100)}"></i>
+      </button>
+    `;
+  }).join("");
+}
+
+function scoreRingOffset(score) {
+  const circumference = 2 * Math.PI * 48;
+  const clamped = Math.max(0, Math.min(score, 100));
+  return String(circumference - (clamped / 100) * circumference);
 }
 
 function formatNumber(value) {

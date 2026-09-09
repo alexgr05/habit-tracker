@@ -24,22 +24,58 @@
         </div>
       </section>
 
-      <section id="todayView" class="dashboard-grid app-view" data-view="today" aria-label="Habit dashboard">
+      <section id="todayView" class="dashboard-grid app-view today-screen" data-view="today" aria-label="Habit dashboard">
         <section class="tracker-panel" aria-label="Daily tracker">
           <div class="panel-head">
+            <div class="today-brand">
+              <div class="today-logo" aria-hidden="true">◔</div>
+              <strong>HabitStreak</strong>
+            </div>
             <div class="panel-controls">
               <div class="mode-toggle" aria-label="Tracker mode">
                 <button id="semesterMode" type="button">Semester</button>
                 <button id="breakMode" type="button">Break</button>
               </div>
               <div class="date-strip">
-                <button id="prevDay" class="icon-button" type="button" aria-label="Previous day">&lsaquo;</button>
                 <input id="activeDate" type="date">
+              </div>
+            </div>
+            <div class="today-date-row">
+              <div>
+                <strong id="todayDateLabel">Today</strong>
+                <span id="todayYearLabel">2026</span>
+              </div>
+              <div class="date-arrows">
+                <button id="prevDay" class="icon-button" type="button" aria-label="Previous day">&lsaquo;</button>
                 <button id="nextDay" class="icon-button" type="button" aria-label="Next day">&rsaquo;</button>
               </div>
             </div>
+            <div id="weekStrip" class="week-strip" aria-label="Week days"></div>
           </div>
 
+          <section class="today-score-card" aria-label="Daily score">
+            <div class="score-ring" style="--score: 0">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="score-ring-track" cx="60" cy="60" r="48"></circle>
+                <circle id="scoreRingProgress" class="score-ring-progress" cx="60" cy="60" r="48"></circle>
+              </svg>
+              <div>
+                <strong id="todayScoreRing">0</strong>
+                <span>/100</span>
+              </div>
+            </div>
+            <div class="score-side">
+              <article>
+                <span id="scoreStatusCompact">Open day</span>
+              </article>
+              <article>
+                <span>Current</span>
+                <strong><span id="lifeStreakCompact">0</span> days</strong>
+              </article>
+            </div>
+          </section>
+
+          <h2 class="today-section-heading">Daily Disciplines</h2>
           <div class="entry-grid">
             <button class="field-toggle habit-toggle" data-field="supplements" type="button">Supplements</button>
             <button class="field-toggle habit-toggle" data-field="floss" type="button">Floss</button>
@@ -48,6 +84,10 @@
             <button id="sportsTile" class="field-toggle habit-toggle" data-field="sports" type="button" hidden>Sports</button>
             <button id="fourthMealTile" class="field-toggle habit-toggle" data-field="fourthMeal" type="button" hidden>4th Meal</button>
             <button id="backStretchingTile" class="field-toggle habit-toggle" data-field="backStretching" type="button" hidden>Back Stretching</button>
+          </div>
+
+          <h2 class="today-section-heading danger-heading">Impulse Safeguards</h2>
+          <div class="safeguard-grid">
             <button class="field-toggle habit-toggle penalty-habit" data-field="masturbating" type="button">Masturbating</button>
             <button class="field-toggle habit-toggle danger-habit" data-field="noSocialMedia" type="button">No Social Media</button>
             <button class="field-toggle habit-toggle danger-habit streak-habit" data-field="noPorn" type="button">
@@ -56,6 +96,7 @@
             </button>
           </div>
 
+          <h2 class="today-section-heading sleep-heading">Sleep & Circadian Rhythm</h2>
           <div class="input-grid">
             <label class="input-card" id="studyCard">
               <span>Study Hours <strong id="studyTarget">No</strong></span>
